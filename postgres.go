@@ -6,13 +6,13 @@ import (
 	"regexp"
 	"strconv"
 
+	_ "github.com/lib/pq"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/migrator"
 	"gorm.io/gorm/schema"
-	_ "github.com/lib/pq"
 )
 
 type Dialector struct {
@@ -98,5 +98,5 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		return "bytea"
 	}
 
-	return ""
+	return string(field.DataType)
 }
