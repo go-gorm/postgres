@@ -137,3 +137,15 @@ func (m Migrator) HasColumn(value interface{}, field string) bool {
 
 	return count > 0
 }
+
+func (m Migrator) HasConstraint(value interface{}, name string) bool {
+	var count int64
+	m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		return m.DB.Raw(
+			"SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = ? AND constraint_name = ?",
+			stmt.Table, name,
+		).Row().Scan(&count)
+	})
+
+	return count > 0
+}
