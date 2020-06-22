@@ -19,6 +19,7 @@ func (m Migrator) CurrentDatabase() (name string) {
 }
 
 func (m Migrator) BuildIndexOptions(opts []schema.IndexOption, stmt *gorm.Statement) (results []interface{}) {
+	once := map[string]int{}
 	for _, opt := range opts {
 		str := stmt.Quote(opt.DBName)
 		if opt.Expression != "" {
@@ -32,7 +33,14 @@ func (m Migrator) BuildIndexOptions(opts []schema.IndexOption, stmt *gorm.Statem
 		if opt.Sort != "" {
 			str += " " + opt.Sort
 		}
-		results = append(results, clause.Expr{SQL: str})
+
+		// do not append multiple expressions for the same index
+		// such as when a struct embeds mutltiple structs which
+		// define an index on themselves
+		if _, seen := once[str]; !seen {
+			once[str] = 1
+			results = append(results, clause.Expr{SQL: str})
+		}
 	}
 	return
 }
