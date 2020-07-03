@@ -7,7 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	_ "github.com/lib/pq"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
 	"gorm.io/gorm/clause"
@@ -17,11 +18,21 @@ import (
 )
 
 type Dialector struct {
-	DSN string
+	*Config
+}
+
+type Config struct {
+	DSN                  string
+	PreferSimpleProtocol bool
+	Conn                 *sql.DB
 }
 
 func Open(dsn string) gorm.Dialector {
-	return &Dialector{DSN: dsn}
+	return &Dialector{&Config{DSN: dsn}}
+}
+
+func New(config Config) gorm.Dialector {
+	return &Dialector{Config: &config}
 }
 
 func (dialector Dialector) Name() string {
@@ -33,7 +44,20 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
 		WithReturning: true,
 	})
-	db.ConnPool, err = sql.Open("postgres", dialector.DSN)
+
+	if dialector.Conn != nil {
+		db.ConnPool = dialector.Conn
+	} else {
+		var config *pgx.ConnConfig
+
+		config, err = pgx.ParseConfig(dialector.Config.DSN)
+		if dialector.Config.PreferSimpleProtocol {
+			config.PreferSimpleProtocol = true
+		}
+
+		db.ConnPool = stdlib.OpenDB(*config)
+	}
+
 	return
 }
 
