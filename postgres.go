@@ -55,6 +55,11 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 			config.PreferSimpleProtocol = true
 		}
 
+		result := regexp.MustCompile("(time_zone|TimeZone)=(.*)($|&| )").FindStringSubmatch(dialector.Config.DSN)
+		if len(result) > 2 {
+			config.RuntimeParams["timezone"] = result[2]
+		}
+
 		db.ConnPool = stdlib.OpenDB(*config)
 	}
 
