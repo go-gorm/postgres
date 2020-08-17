@@ -22,6 +22,7 @@ type Dialector struct {
 }
 
 type Config struct {
+	DriverName           string
 	DSN                  string
 	PreferSimpleProtocol bool
 	Conn                 *sql.DB
@@ -44,8 +45,11 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
 		WithReturning: true,
 	})
+
 	if dialector.Conn != nil {
 		db.ConnPool = dialector.Conn
+	} else if dialector.DriverName != "" {
+		db.ConnPool, err = sql.Open(dialector.DriverName, dialector.Config.DSN)
 	} else {
 		var config *pgx.ConnConfig
 
