@@ -133,6 +133,9 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 			}
 		}
 	case schema.Float:
+		if field.Precision > 0 {
+			return fmt.Sprintf("numeric(%d)", field.Precision)
+		}
 		return "decimal"
 	case schema.String:
 		if field.Size > 0 {
