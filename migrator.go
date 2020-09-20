@@ -67,10 +67,10 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 			createIndexSQL += " ON ?"
 
 			if idx.Type != "" {
-				createIndexSQL += " USING " + idx.Type
+				createIndexSQL += " USING " + idx.Type + "(?)"
+			} else {
+				createIndexSQL += " ?"
 			}
-
-			createIndexSQL += " ?"
 
 			if idx.Where != "" {
 				createIndexSQL += " WHERE " + idx.Where
