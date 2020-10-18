@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"database/sql"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -11,6 +12,53 @@ import (
 
 type Migrator struct {
 	migrator.Migrator
+}
+
+type Column struct {
+	name      string
+	nullable  sql.NullString
+	datatype  string
+	maxlen    sql.NullInt64
+	precision sql.NullInt64
+	radix     sql.NullInt64
+	scale     sql.NullInt64
+}
+
+func (c Column) Name() string {
+	return c.name
+}
+
+func (c Column) DatabaseTypeName() string {
+	return c.datatype
+}
+
+func (c Column) Length() (length int64, ok bool) {
+	ok = c.maxlen.Valid
+	if ok {
+		length = c.maxlen.Int64
+	} else {
+		length = 0
+	}
+	return
+}
+
+func (c Column) Nullable() (nullable bool, ok bool) {
+	if c.nullable.Valid {
+		nullable, ok = c.nullable.String == "YES", true
+	} else {
+		nullable, ok = false, false
+	}
+	return
+}
+
+func (c Column) DecimalSize() (precision int64, scale int64, ok bool) {
+	ok = c.precision.Valid && c.scale.Valid && c.radix.Valid
+	if ok && c.radix.Int64 == 10 {
+		precision, scale = c.precision.Int64, c.scale.Int64
+	} else {
+		precision, scale = 0, 0
+	}
+	return
 }
 
 func (m Migrator) CurrentDatabase() (name string) {
@@ -151,4 +199,46 @@ func (m Migrator) HasConstraint(value interface{}, name string) bool {
 	})
 
 	return count > 0
+}
+
+func (m Migrator) ColumnTypes(value interface{}) (columnTypes []Column, err error) {
+	columnTypes = make([]Column, 0)
+	err = m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		columns, err := m.DB.Raw(
+			"SELECT column_name, is_nullable, udt_name, character_maximum_length, "+
+				"numeric_precision, numeric_precision_radix, numeric_scale "+
+				"FROM information_schema.columns WHERE table_name = ?", stmt.Table).Rows()
+		if err != nil {
+			return err
+		}
+		defer columns.Close()
+
+		for columns.Next() {
+			var (
+				name      string
+				nullable  sql.NullString
+				datatype  string
+				maxlen    sql.NullInt64
+				precision sql.NullInt64
+				radix     sql.NullInt64
+				scale     sql.NullInt64
+			)
+			err = columns.Scan(&name, &nullable, &datatype, &maxlen, &precision, &radix, &scale)
+			if err != nil {
+				return err
+			}
+			columnTypes = append(columnTypes, Column{
+				name:      name,
+				nullable:  nullable,
+				datatype:  datatype,
+				maxlen:    maxlen,
+				precision: precision,
+				radix:     radix,
+				scale:     scale,
+			})
+		}
+
+		return err
+	})
+	return
 }
