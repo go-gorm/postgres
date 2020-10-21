@@ -46,6 +46,8 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		WithReturning: true,
 	})
 
+	db.Callback().Query().Replace("gorm:query", Query)
+
 	if dialector.Conn != nil {
 		db.ConnPool = dialector.Conn
 	} else if dialector.DriverName != "" {
