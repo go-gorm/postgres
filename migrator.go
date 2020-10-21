@@ -207,7 +207,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []Column, err erro
 		columns, err := m.DB.Raw(
 			"SELECT column_name, is_nullable, udt_name, character_maximum_length, "+
 				"numeric_precision, numeric_precision_radix, numeric_scale "+
-				"FROM information_schema.columns WHERE table_name = ?", stmt.Table).Rows()
+				"FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = ?", stmt.Table).Rows()
 		if err != nil {
 			return err
 		}
