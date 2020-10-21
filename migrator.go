@@ -216,28 +216,20 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 		defer columns.Close()
 
 		for columns.Next() {
-			var (
-				name      string
-				nullable  sql.NullString
-				datatype  string
-				maxlen    sql.NullInt64
-				precision sql.NullInt64
-				radix     sql.NullInt64
-				scale     sql.NullInt64
+			var column Column
+			err = columns.Scan(
+				&column.name,
+				&column.nullable,
+				&column.datatype,
+				&column.maxlen,
+				&column.precision,
+				&column.radix,
+				&column.scale,
 			)
-			err = columns.Scan(&name, &nullable, &datatype, &maxlen, &precision, &radix, &scale)
 			if err != nil {
 				return err
 			}
-			columnTypes = append(columnTypes, Column{
-				name:      name,
-				nullable:  nullable,
-				datatype:  datatype,
-				maxlen:    maxlen,
-				precision: precision,
-				radix:     radix,
-				scale:     scale,
-			})
+			columnTypes = append(columnTypes, column)
 		}
 
 		return err
