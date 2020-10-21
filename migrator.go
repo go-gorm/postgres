@@ -201,13 +201,15 @@ func (m Migrator) HasConstraint(value interface{}, name string) bool {
 	return count > 0
 }
 
-func (m Migrator) ColumnTypes(value interface{}) (columnTypes []Column, err error) {
-	columnTypes = make([]Column, 0)
+func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType, err error) {
+	columnTypes = make([]gorm.ColumnType, 0)
 	err = m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		currentDatabase := m.DB.Migrator().CurrentDatabase()
 		columns, err := m.DB.Raw(
 			"SELECT column_name, is_nullable, udt_name, character_maximum_length, "+
 				"numeric_precision, numeric_precision_radix, numeric_scale "+
-				"FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = ?", stmt.Table).Rows()
+				"FROM information_schema.columns WHERE table_schema = ? AND table_name = ?",
+			currentDatabase, stmt.Table).Rows()
 		if err != nil {
 			return err
 		}
