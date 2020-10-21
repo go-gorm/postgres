@@ -21,13 +21,11 @@ func Query(db *gorm.DB) {
 			if orderByClause, ok := db.Statement.Clauses["ORDER BY"]; ok {
 				if _, ok := db.Statement.Clauses["GROUP BY"]; !ok {
 					if selectClause, ok := db.Statement.Clauses["SELECT"]; ok {
-						if s, ok := selectClause.Expression.(clause.Select); ok {
-							if expr, ok := s.Expression.(clause.Expr); ok && len(expr.SQL) > 7 && strings.EqualFold(expr.SQL[0:5], "count") { // count(1)
-								delete(db.Statement.Clauses, "ORDER BY")
-								defer func() {
-									db.Statement.Clauses["ORDER BY"] = orderByClause
-								}()
-							}
+						if expr, ok := selectClause.Expression.(clause.Expr); ok && len(expr.SQL) > 7 && strings.EqualFold(expr.SQL[0:5], "count") { // count(1)
+							delete(db.Statement.Clauses, "ORDER BY")
+							defer func() {
+								db.Statement.Clauses["ORDER BY"] = orderByClause
+							}()
 						}
 					}
 				}
