@@ -208,7 +208,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 		columns, err := m.DB.Raw(
 			"SELECT column_name, is_nullable, udt_name, character_maximum_length, "+
 				"numeric_precision, numeric_precision_radix, numeric_scale "+
-				"FROM information_schema.columns WHERE table_schema = ? AND table_name = ?",
+				"FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() and table_catalog = ? AND table_name = ?",
 			currentDatabase, stmt.Table).Rows()
 		if err != nil {
 			return err
