@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -95,7 +96,7 @@ func (m Migrator) HasIndex(value interface{}, name string) bool {
 		}
 
 		return m.DB.Raw(
-			"SELECT count(*) FROM pg_indexes WHERE tablename = ? AND indexname = ? AND schemaname = CURRENT_SCHEMA()", stmt.Table, name,
+			"SELECT count(*) FROM pg_indexes WHERE tablename = ? AND indexname = ? AND schemaname = ?", stmt.Table, name, m.CurrentSchema(stmt),
 		).Row().Scan(&count)
 	})
 
@@ -155,7 +156,7 @@ func (m Migrator) DropIndex(value interface{}, name string) error {
 func (m Migrator) HasTable(value interface{}) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
-		return m.DB.Raw("SELECT count(*) FROM information_schema.tables WHERE table_schema =  CURRENT_SCHEMA() AND table_name = ? AND table_type = ?", stmt.Table, "BASE TABLE").Row().Scan(&count)
+		return m.DB.Raw("SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", m.CurrentSchema(stmt), stmt.Table, "BASE TABLE").Row().Scan(&count)
 	})
 
 	return count > 0
@@ -183,8 +184,8 @@ func (m Migrator) HasColumn(value interface{}, field string) bool {
 		}
 
 		return m.DB.Raw(
-			"SELECT count(*) FROM INFORMATION_SCHEMA.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = ? AND column_name = ?",
-			stmt.Table, name,
+			"SELECT count(*) FROM INFORMATION_SCHEMA.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?",
+			m.CurrentSchema(stmt), stmt.Table, name,
 		).Row().Scan(&count)
 	})
 
@@ -195,8 +196,8 @@ func (m Migrator) HasConstraint(value interface{}, name string) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		return m.DB.Raw(
-			"SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = CURRENT_SCHEMA() AND table_name = ? AND constraint_name = ?",
-			stmt.Table, name,
+			"SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = ? AND table_name = ? AND constraint_name = ?",
+			m.CurrentSchema(stmt), stmt.Table, name,
 		).Row().Scan(&count)
 	})
 
@@ -207,11 +208,12 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 	columnTypes = make([]gorm.ColumnType, 0)
 	err = m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		currentDatabase := m.DB.Migrator().CurrentDatabase()
+		currentSchema := m.CurrentSchema(stmt)
 		columns, err := m.DB.Raw(
 			"SELECT column_name, is_nullable, udt_name, character_maximum_length, "+
 				"numeric_precision, numeric_precision_radix, numeric_scale, datetime_precision "+
-				"FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() and table_catalog = ? AND table_name = ?",
-			currentDatabase, stmt.Table).Rows()
+				"FROM information_schema.columns WHERE table_catalog = ? AND table_schema = ? AND table_name = ?",
+			currentDatabase, currentSchema, stmt.Table).Rows()
 		if err != nil {
 			return err
 		}
@@ -238,4 +240,13 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 		return err
 	})
 	return
+}
+
+func (m Migrator) CurrentSchema(stmt *gorm.Statement) interface{} {
+	if stmt.TableExpr != nil {
+		if tables := strings.Split(stmt.TableExpr.SQL, `"."`); len(tables) == 2 {
+			return strings.TrimPrefix(tables[0], `"`)
+		}
+	}
+	return clause.Expr{SQL: "CURRENT_SCHEMA()"}
 }
