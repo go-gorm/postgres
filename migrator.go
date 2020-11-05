@@ -107,7 +107,7 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		if idx := stmt.Schema.LookIndex(name); idx != nil {
 			opts := m.BuildIndexOptions(idx.Fields, stmt)
-			values := []interface{}{clause.Column{Name: idx.Name}, clause.Table{Name: stmt.Table}, opts}
+			values := []interface{}{clause.Column{Name: idx.Name}, m.CurrentTable(stmt), opts}
 
 			createIndexSQL := "CREATE "
 			if idx.Class != "" {
@@ -167,7 +167,7 @@ func (m Migrator) DropTable(values ...interface{}) error {
 	tx := m.DB.Session(&gorm.Session{})
 	for i := len(values) - 1; i >= 0; i-- {
 		if err := m.RunWithValue(values[i], func(stmt *gorm.Statement) error {
-			return tx.Exec("DROP TABLE IF EXISTS ? CASCADE", clause.Table{Name: stmt.Table}).Error
+			return tx.Exec("DROP TABLE IF EXISTS ? CASCADE", m.CurrentTable(stmt)).Error
 		}); err != nil {
 			return err
 		}
@@ -249,4 +249,11 @@ func (m Migrator) CurrentSchema(stmt *gorm.Statement) interface{} {
 		}
 	}
 	return clause.Expr{SQL: "CURRENT_SCHEMA()"}
+}
+
+func (m Migrator) CurrentTable(stmt *gorm.Statement) interface{} {
+	if stmt.TableExpr != nil {
+		return *stmt.TableExpr
+	}
+	return clause.Table{Name: stmt.Table}
 }
