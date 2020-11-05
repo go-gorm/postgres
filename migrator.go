@@ -250,10 +250,3 @@ func (m Migrator) CurrentSchema(stmt *gorm.Statement) interface{} {
 	}
 	return clause.Expr{SQL: "CURRENT_SCHEMA()"}
 }
-
-func (m Migrator) CurrentTable(stmt *gorm.Statement) interface{} {
-	if stmt.TableExpr != nil {
-		return *stmt.TableExpr
-	}
-	return clause.Table{Name: stmt.Table}
-}
