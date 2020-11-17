@@ -153,6 +153,29 @@ func (m Migrator) DropIndex(value interface{}, name string) error {
 	})
 }
 
+func (m Migrator) CreateTable(values ...interface{}) (err error) {
+	if err = m.Migrator.CreateTable(values...); err != nil {
+		return
+	}
+	for _, value := range m.ReorderModels(values, false) {
+		if err = m.RunWithValue(value, func(stmt *gorm.Statement) error {
+			for _, field := range stmt.Schema.FieldsByDBName {
+				if field.Comment != "" {
+					if err := m.DB.Exec(
+						"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " is " + field.Comment,
+					).Error; err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}); err != nil {
+			return
+		}
+	}
+	return
+}
+
 func (m Migrator) HasTable(value interface{}) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
@@ -175,6 +198,24 @@ func (m Migrator) DropTable(values ...interface{}) error {
 	return nil
 }
 
+func (m Migrator) AddColumn(value interface{}, field string) error {
+	if err := m.Migrator.AddColumn(value, field); err != nil {
+		return err
+	}
+	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		if field := stmt.Schema.LookUpField(field); field != nil {
+			if field.Comment != "" {
+				if err := m.DB.Exec(
+					"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " is " + field.Comment,
+				).Error; err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
 func (m Migrator) HasColumn(value interface{}, field string) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
@@ -190,6 +231,22 @@ func (m Migrator) HasColumn(value interface{}, field string) bool {
 	})
 
 	return count > 0
+}
+
+func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnType gorm.ColumnType) error {
+	if err := m.Migrator.MigrateColumn(value, field, columnType); err != nil {
+		return err
+	}
+	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		if field.Comment != "" {
+			if err := m.DB.Exec(
+				"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " is " + field.Comment,
+			).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (m Migrator) HasConstraint(value interface{}, name string) bool {
