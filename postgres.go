@@ -25,6 +25,7 @@ type Config struct {
 	DriverName           string
 	DSN                  string
 	PreferSimpleProtocol bool
+	WithoutReturning     bool
 	Conn                 *sql.DB
 }
 
@@ -43,7 +44,7 @@ func (dialector Dialector) Name() string {
 func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	// register callbacks
 	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
-		WithReturning: true,
+		WithReturning: !dialector.WithoutReturning,
 	})
 
 	if dialector.Conn != nil {
