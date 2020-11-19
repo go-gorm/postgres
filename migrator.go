@@ -238,9 +238,26 @@ func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnTy
 		return err
 	}
 	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
-		if field.Comment != "" {
+		var description string
+		m.DB.Raw(
+			"SELECT description FROM pg_catalog.pg_description WHERE objsubid = (?) AND objoid = (?)",
+			gorm.Expr(
+				"SELECT ordinal_position FROM information_schema.columns WHERE table_name = ? AND column_name = ?",
+				stmt.Table, field.DBName,
+			),
+			gorm.Expr(
+				"SELECT oid FROM pg_catalog.pg_class WHERE relname = ? AND relnamespace = "+
+					"(SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = current_schema())",
+				stmt.Table,
+			),
+		).Scan(&description)
+		comment := field.Comment
+		if comment != "" {
+			comment = comment[1 : len(comment)-1]
+		}
+		if field.Comment != "" && comment != description {
 			if err := m.DB.Exec(
-				"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " is " + field.Comment,
+				"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " IS " + field.Comment,
 			).Error; err != nil {
 				return err
 			}
