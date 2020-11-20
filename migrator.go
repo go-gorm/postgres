@@ -162,7 +162,8 @@ func (m Migrator) CreateTable(values ...interface{}) (err error) {
 			for _, field := range stmt.Schema.FieldsByDBName {
 				if field.Comment != "" {
 					if err := m.DB.Exec(
-						"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " is " + field.Comment,
+						"COMMENT ON COLUMN ?.? IS ?",
+						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(field.Comment),
 					).Error; err != nil {
 						return err
 					}
@@ -206,7 +207,8 @@ func (m Migrator) AddColumn(value interface{}, field string) error {
 		if field := stmt.Schema.LookUpField(field); field != nil {
 			if field.Comment != "" {
 				if err := m.DB.Exec(
-					"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " is " + field.Comment,
+					"COMMENT ON COLUMN ?.? IS ?",
+					m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(field.Comment),
 				).Error; err != nil {
 					return err
 				}
@@ -239,25 +241,20 @@ func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnTy
 	}
 	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		var description string
-		m.DB.Raw(
-			"SELECT description FROM pg_catalog.pg_description WHERE objsubid = (?) AND objoid = (?)",
-			gorm.Expr(
-				"SELECT ordinal_position FROM information_schema.columns WHERE table_name = ? AND column_name = ?",
-				stmt.Table, field.DBName,
-			),
-			gorm.Expr(
-				"SELECT oid FROM pg_catalog.pg_class WHERE relname = ? AND relnamespace = "+
-					"(SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = current_schema())",
-				stmt.Table,
-			),
-		).Scan(&description)
+		values := []interface{}{stmt.Table, field.DBName, stmt.Table, m.CurrentSchema(stmt)}
+		checkSQL := "SELECT description FROM pg_catalog.pg_description "
+		checkSQL += "WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_name = ? AND column_name = ?) "
+		checkSQL += "AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = ? AND relnamespace = "
+		checkSQL += "(SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = ?))"
+		m.DB.Raw(checkSQL, values...).Scan(&description)
 		comment := field.Comment
 		if comment != "" {
 			comment = comment[1 : len(comment)-1]
 		}
 		if field.Comment != "" && comment != description {
 			if err := m.DB.Exec(
-				"COMMENT ON COLUMN " + stmt.Table + "." + field.DBName + " IS " + field.Comment,
+				"COMMENT ON COLUMN ?.? IS ?",
+				m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(field.Comment),
 			).Error; err != nil {
 				return err
 			}
