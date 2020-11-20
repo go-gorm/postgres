@@ -163,7 +163,7 @@ func (m Migrator) CreateTable(values ...interface{}) (err error) {
 				if field.Comment != "" {
 					if err := m.DB.Exec(
 						"COMMENT ON COLUMN ?.? IS ?",
-						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(field.Comment),
+						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(m.Migrator.Dialector.Explain("$1", field.Comment)),
 					).Error; err != nil {
 						return err
 					}
@@ -208,7 +208,7 @@ func (m Migrator) AddColumn(value interface{}, field string) error {
 			if field.Comment != "" {
 				if err := m.DB.Exec(
 					"COMMENT ON COLUMN ?.? IS ?",
-					m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(field.Comment),
+					m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(m.Migrator.Dialector.Explain("$1", field.Comment)),
 				).Error; err != nil {
 					return err
 				}
@@ -254,7 +254,7 @@ func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnTy
 		if field.Comment != "" && comment != description {
 			if err := m.DB.Exec(
 				"COMMENT ON COLUMN ?.? IS ?",
-				m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(field.Comment),
+				m.CurrentTable(stmt), clause.Column{Name: field.DBName}, gorm.Expr(m.Migrator.Dialector.Explain("$1", field.Comment)),
 			).Error; err != nil {
 				return err
 			}
