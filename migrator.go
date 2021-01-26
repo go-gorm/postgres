@@ -266,9 +266,16 @@ func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnTy
 func (m Migrator) HasConstraint(value interface{}, name string) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		constraint, chk, table := m.GuessConstraintAndTable(stmt, name)
+		if constraint != nil {
+			name = constraint.Name
+		} else if chk != nil {
+			name = chk.Name
+		}
+
 		return m.DB.Raw(
 			"SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = ? AND table_name = ? AND constraint_name = ?",
-			m.CurrentSchema(stmt), stmt.Table, name,
+			m.CurrentSchema(stmt), table, name,
 		).Row().Scan(&count)
 	})
 
