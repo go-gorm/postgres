@@ -140,7 +140,7 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 	case schema.Float:
 		if field.Precision > 0 {
 			if field.Scale > 0 {
-				fmt.Sprintf("numeric(%d, %d)", field.Precision, field.Scale)
+				return fmt.Sprintf("numeric(%d, %d)", field.Precision, field.Scale)
 			}
 			return fmt.Sprintf("numeric(%d)", field.Precision)
 		}
