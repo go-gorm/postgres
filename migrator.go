@@ -243,7 +243,7 @@ func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnTy
 		var description string
 		values := []interface{}{stmt.Table, field.DBName, stmt.Table, m.CurrentSchema(stmt)}
 		checkSQL := "SELECT description FROM pg_catalog.pg_description "
-		checkSQL += "WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_name = ? AND column_name = ?) "
+		checkSQL += "WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema=CURRENT_SCHEMA() and table_name = ? AND column_name = ?) "
 		checkSQL += "AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = ? AND relnamespace = "
 		checkSQL += "(SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = ?))"
 		m.DB.Raw(checkSQL, values...).Scan(&description)
