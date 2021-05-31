@@ -113,9 +113,13 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 			if idx.Class != "" {
 				createIndexSQL += idx.Class + " "
 			}
-			createIndexSQL += "INDEX ?"
+			createIndexSQL += "INDEX "
 
-			createIndexSQL += " ON ?"
+			if idx.Option == "CONCURRENTLY" {
+				createIndexSQL += "CONCURRENTLY "
+			}
+
+			createIndexSQL += "? ON ?"
 
 			if idx.Type != "" {
 				createIndexSQL += " USING " + idx.Type + "(?)"
