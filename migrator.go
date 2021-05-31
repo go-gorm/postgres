@@ -115,7 +115,7 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 			}
 			createIndexSQL += "INDEX "
 
-			if idx.Option == "CONCURRENTLY" {
+			if strings.TrimSpace(strings.ToUpper(idx.Option)) == "CONCURRENTLY" {
 				createIndexSQL += "CONCURRENTLY "
 			}
 
