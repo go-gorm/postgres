@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgconn"
+	"github.com/jackc/pgconn/stmtcache"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"gorm.io/gorm"
@@ -26,6 +28,7 @@ type Config struct {
 	DSN                  string
 	PreferSimpleProtocol bool
 	WithoutReturning     bool
+	StmtCacheFunc        func(conn *pgconn.PgConn) stmtcache.Cache
 	Conn                 *sql.DB
 }
 
@@ -60,6 +63,9 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		}
 		if dialector.Config.PreferSimpleProtocol {
 			config.PreferSimpleProtocol = true
+		}
+		if dialector.Config.StmtCacheFunc != nil {
+			config.BuildStatementCache = dialector.Config.StmtCacheFunc
 		}
 		result := regexp.MustCompile("(time_zone|TimeZone)=(.*?)($|&| )").FindStringSubmatch(dialector.Config.DSN)
 		if len(result) > 2 {
