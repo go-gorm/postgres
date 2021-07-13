@@ -227,8 +227,10 @@ func (m Migrator) HasColumn(value interface{}, field string) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		name := field
-		if field := stmt.Schema.LookUpField(field); field != nil {
-			name = field.DBName
+		if stmt.Schema != nil {
+			if field := stmt.Schema.LookUpField(field); field != nil {
+				name = field.DBName
+			}
 		}
 
 		currentSchema, curTable := m.CurrentSchema(stmt, stmt.Table)
