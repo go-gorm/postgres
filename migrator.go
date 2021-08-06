@@ -65,7 +65,7 @@ func (c Column) DecimalSize() (precision int64, scale int64, ok bool) {
 }
 
 func (m Migrator) CurrentDatabase() (name string) {
-	m.DB.Raw("SELECT CURRENT_DATABASE()").Row().Scan(&name)
+	m.DB.Raw("SELECT CURRENT_DATABASE()").Scan(&name)
 	return
 }
 
@@ -97,7 +97,7 @@ func (m Migrator) HasIndex(value interface{}, name string) bool {
 		currentSchema, curTable := m.CurrentSchema(stmt, stmt.Table)
 		return m.DB.Raw(
 			"SELECT count(*) FROM pg_indexes WHERE tablename = ? AND indexname = ? AND schemaname = ?", curTable, name, currentSchema,
-		).Row().Scan(&count)
+		).Scan(&count).Error
 	})
 
 	return count > 0
@@ -185,9 +185,8 @@ func (m Migrator) HasTable(value interface{}) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		currentSchema, curTable := m.CurrentSchema(stmt, stmt.Table)
-		return m.DB.Raw("SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", currentSchema, curTable, "BASE TABLE").Row().Scan(&count)
+		return m.DB.Raw("SELECT count(*) FROM information_schema.tables WHERE table_schema = ? AND table_name = ? AND table_type = ?", currentSchema, curTable, "BASE TABLE").Scan(&count).Error
 	})
-
 	return count > 0
 }
 
@@ -237,7 +236,7 @@ func (m Migrator) HasColumn(value interface{}, field string) bool {
 		return m.DB.Raw(
 			"SELECT count(*) FROM INFORMATION_SCHEMA.columns WHERE table_schema = ? AND table_name = ? AND column_name = ?",
 			currentSchema, curTable, name,
-		).Row().Scan(&count)
+		).Scan(&count).Error
 	})
 
 	return count > 0
@@ -286,7 +285,7 @@ func (m Migrator) HasConstraint(value interface{}, name string) bool {
 		return m.DB.Raw(
 			"SELECT count(*) FROM INFORMATION_SCHEMA.table_constraints WHERE table_schema = ? AND table_name = ? AND constraint_name = ?",
 			currentSchema, curTable, name,
-		).Row().Scan(&count)
+		).Scan(&count).Error
 	})
 
 	return count > 0
