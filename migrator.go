@@ -24,6 +24,7 @@ type Column struct {
 	radix             sql.NullInt64
 	scale             sql.NullInt64
 	datetimeprecision sql.NullInt64
+	typlen            sql.NullInt64
 }
 
 func (c Column) Name() string {
@@ -35,11 +36,16 @@ func (c Column) DatabaseTypeName() string {
 }
 
 func (c Column) Length() (length int64, ok bool) {
-	ok = c.maxlen.Valid
-	if ok {
-		length = c.maxlen.Int64
+	ok = c.typlen.Valid
+	if ok && c.typlen.Int64 > 0 {
+		length = c.typlen.Int64
 	} else {
-		length = 0
+		ok = c.maxlen.Valid
+		if ok {
+			length = c.maxlen.Int64
+		} else {
+			length = 0
+		}
 	}
 	return
 }
@@ -298,8 +304,9 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 		currentSchema, table := m.CurrentSchema(stmt, stmt.Table)
 		columns, err := m.DB.Raw(
 			"SELECT column_name, is_nullable, udt_name, character_maximum_length, "+
-				"numeric_precision, numeric_precision_radix, numeric_scale, datetime_precision "+
-				"FROM information_schema.columns WHERE table_catalog = ? AND table_schema = ? AND table_name = ?",
+				"numeric_precision, numeric_precision_radix, numeric_scale, datetime_precision, 8 * typlen "+
+				"FROM information_schema.columns AS cols JOIN pg_type AS pgt ON cols.udt_name = pgt.typname "+
+				"WHERE table_catalog = ? AND table_schema = ? AND table_name = ?",
 			currentDatabase, currentSchema, table).Rows()
 		if err != nil {
 			return err
@@ -317,6 +324,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 				&column.radix,
 				&column.scale,
 				&column.datetimeprecision,
+				&column.typlen,
 			)
 			if err != nil {
 				return err
