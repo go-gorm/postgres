@@ -25,7 +25,7 @@ type Config struct {
 	DSN                  string
 	PreferSimpleProtocol bool
 	WithoutReturning     bool
-	Conn                 *sql.DB
+	Conn                 gorm.ConnPool
 }
 
 func Open(dsn string) gorm.Dialector {
