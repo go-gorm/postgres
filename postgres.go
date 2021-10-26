@@ -43,7 +43,8 @@ func (dialector Dialector) Name() string {
 func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	// register callbacks
 	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
-		WithReturning: !dialector.WithoutReturning,
+		CreateClauses: []string{"INSERT", "VALUES", "ON CONFLICT", "RETURNING"},
+		UpdateClauses: []string{"UPDATE", "SET", "WHERE", "RETURNING"},
 	})
 
 	if dialector.Conn != nil {
