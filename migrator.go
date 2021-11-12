@@ -163,6 +163,11 @@ func (m Migrator) DropIndex(value interface{}, name string) error {
 	})
 }
 
+func (m Migrator) GetTables() (tableList []string, err error) {
+	currentSchema, _ := m.CurrentSchema(m.DB.Statement, "")
+	return tableList, m.DB.Raw("SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_type = ?", currentSchema, "BASE TABLE").Scan(&tableList).Error
+}
+
 func (m Migrator) CreateTable(values ...interface{}) (err error) {
 	if err = m.Migrator.CreateTable(values...); err != nil {
 		return
