@@ -254,9 +254,13 @@ func (m Migrator) HasColumn(value interface{}, field string) bool {
 }
 
 func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnType gorm.ColumnType) error {
-	if err := m.Migrator.MigrateColumn(value, field, columnType); err != nil {
-		return err
+	// skip primary field
+	if !field.PrimaryKey {
+		if err := m.Migrator.MigrateColumn(value, field, columnType); err != nil {
+			return err
+		}
 	}
+
 	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		var description string
 		currentSchema, curTable := m.CurrentSchema(stmt, stmt.Table)
