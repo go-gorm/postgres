@@ -163,11 +163,11 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		} else {
 			switch {
 			case size <= 16:
-				return "smallint"
+				return "int2"
 			case size <= 32:
-				return "integer"
+				return "int4"
 			default:
-				return "bigint"
+				return "int8"
 			}
 		}
 	case schema.Float:
