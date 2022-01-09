@@ -125,7 +125,7 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 				createIndexSQL += "CONCURRENTLY "
 			}
 
-			createIndexSQL += "? ON ?"
+			createIndexSQL += "IF NOT EXISTS ? ON ?"
 
 			if idx.Type != "" {
 				createIndexSQL += " USING " + idx.Type + "(?)"
