@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"gorm.io/gorm"
@@ -231,6 +232,73 @@ func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnTy
 	})
 }
 
+// AlterColumn alter value's `field` column' type based on schema definition
+func (m Migrator) AlterColumn(value interface{}, field string) error {
+	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		if field := stmt.Schema.LookUpField(field); field != nil {
+			var (
+				columnTypes, _  = m.DB.Migrator().ColumnTypes(value)
+				fieldColumnType migrator.ColumnType
+			)
+			for _, columnType := range columnTypes {
+				if columnType.Name() == field.DBName {
+					fieldColumnType, _ = columnType.(migrator.ColumnType)
+				}
+			}
+
+			return m.DB.Connection(func(tx *gorm.DB) error {
+				fileType := clause.Expr{SQL: m.DataTypeOf(field)}
+				if fieldColumnType.DatabaseTypeName() != fileType.SQL {
+					if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType).Error; err != nil {
+						return err
+					}
+				}
+
+				if null, _ := fieldColumnType.Nullable(); null == field.NotNull {
+					if field.NotNull {
+						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET NOT NULL", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
+							return err
+						}
+					} else {
+						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? DROP NOT NULL", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
+							return err
+						}
+					}
+				}
+
+				if uniq, _ := fieldColumnType.Unique(); uniq != field.Unique {
+					idxName := clause.Column{Name: m.DB.Config.NamingStrategy.IndexName(stmt.Table, field.DBName)}
+					if err := tx.Exec("ALTER TABLE ? ADD CONSTRAINT ? UNIQUE(?)", m.CurrentTable(stmt), idxName, clause.Column{Name: field.DBName}).Error; err != nil {
+						return err
+					}
+				}
+
+				if v, _ := fieldColumnType.DefaultValue(); v != field.DefaultValue {
+					if field.HasDefaultValue && (field.DefaultValueInterface != nil || field.DefaultValue != "") {
+						if field.DefaultValueInterface != nil {
+							defaultStmt := &gorm.Statement{Vars: []interface{}{field.DefaultValueInterface}}
+							m.Dialector.BindVarTo(defaultStmt, defaultStmt, field.DefaultValueInterface)
+							if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET DEFAULT ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: m.Dialector.Explain(defaultStmt.SQL.String(), field.DefaultValueInterface)}).Error; err != nil {
+								return err
+							}
+						} else if field.DefaultValue != "(-)" {
+							if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET DEFAULT ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: field.DefaultValue}).Error; err != nil {
+								return err
+							}
+						} else {
+							if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? DROP DEFAULT", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: field.DefaultValue}).Error; err != nil {
+								return err
+							}
+						}
+					}
+				}
+				return nil
+			})
+		}
+		return fmt.Errorf("failed to look up field with name: %s", field)
+	})
+}
+
 func (m Migrator) HasConstraint(value interface{}, name string) bool {
 	var count int64
 	m.RunWithValue(value, func(stmt *gorm.Statement) error {
@@ -276,7 +344,10 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 
 		for columns.Next() {
 			var (
-				column            migrator.ColumnType
+				column = migrator.ColumnType{
+					PrimaryKeyValue: sql.NullBool{Valid: true},
+					UniqueValue:     sql.NullBool{Valid: true},
+				}
 				datetimePrecision sql.NullInt64
 				radixValue        sql.NullInt64
 				typeLenValue      sql.NullInt64
@@ -297,6 +368,10 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			if strings.HasPrefix(column.DefaultValueValue.String, "nextval('") && strings.HasSuffix(column.DefaultValueValue.String, "seq'::regclass)") {
 				column.AutoIncrementValue = sql.NullBool{Bool: true, Valid: true}
 				column.DefaultValueValue = sql.NullString{}
+			}
+
+			if column.DefaultValueValue.Valid {
+				column.DefaultValueValue.String = regexp.MustCompile("'(.*)'::[\\w]+$").ReplaceAllString(column.DefaultValueValue.String, "$1")
 			}
 
 			if datetimePrecision.Valid {
@@ -326,7 +401,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 				if mc.NameValue.String == name {
 					switch columnType {
 					case "PRIMARY KEY":
-						mc.PrimayKeyValue = sql.NullBool{Bool: true, Valid: true}
+						mc.PrimaryKeyValue = sql.NullBool{Bool: true, Valid: true}
 					case "UNIQUE":
 						mc.UniqueValue = sql.NullBool{Bool: true, Valid: true}
 					}
