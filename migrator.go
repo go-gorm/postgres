@@ -328,7 +328,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			columns, err         = m.DB.Raw(
 				"SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = ? AND table_schema = ? AND table_name = ?",
 				currentDatabase, currentSchema, table).Rows()
-			rows, rowsErr = m.DB.Session(&gorm.Session{}).Table(stmt.Table).Limit(1).Rows()
+			rows, rowsErr = m.GetRows(currentSchema, table)
 		)
 
 		if err != nil {
@@ -438,6 +438,16 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 		return err
 	})
 	return
+}
+
+func (m Migrator) GetRows(currentSchema interface{}, table interface{}) (*sql.Rows, error) {
+	name := table.(string)
+	if currentSchema != nil {
+		if _, ok := currentSchema.(string); ok {
+			name = fmt.Sprintf("%v.%v", currentSchema, table)
+		}
+	}
+	return m.DB.Session(&gorm.Session{}).Table(name).Limit(1).Rows()
 }
 
 func (m Migrator) CurrentSchema(stmt *gorm.Statement, table string) (interface{}, interface{}) {
