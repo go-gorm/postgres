@@ -40,6 +40,8 @@ func (dialector Dialector) Name() string {
 	return "postgres"
 }
 
+var timeZoneMatcher = regexp.MustCompile("(time_zone|TimeZone)=(.*?)($|&| )")
+
 func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	// register callbacks
 	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
@@ -62,7 +64,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		if dialector.Config.PreferSimpleProtocol {
 			config.PreferSimpleProtocol = true
 		}
-		result := regexp.MustCompile("(time_zone|TimeZone)=(.*?)($|&| )").FindStringSubmatch(dialector.Config.DSN)
+		result := timeZoneMatcher.FindStringSubmatch(dialector.Config.DSN)
 		if len(result) > 2 {
 			config.RuntimeParams["timezone"] = result[2]
 		}
