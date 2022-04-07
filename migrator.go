@@ -238,11 +238,11 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 		if field := stmt.Schema.LookUpField(field); field != nil {
 			var (
 				columnTypes, _  = m.DB.Migrator().ColumnTypes(value)
-				fieldColumnType migrator.ColumnType
+				fieldColumnType *migrator.ColumnType
 			)
 			for _, columnType := range columnTypes {
 				if columnType.Name() == field.DBName {
-					fieldColumnType, _ = columnType.(migrator.ColumnType)
+					fieldColumnType, _ = columnType.(*migrator.ColumnType)
 				}
 			}
 
