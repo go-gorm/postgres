@@ -238,11 +238,11 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 		if field := stmt.Schema.LookUpField(field); field != nil {
 			var (
 				columnTypes, _  = m.DB.Migrator().ColumnTypes(value)
-				fieldColumnType migrator.ColumnType
+				fieldColumnType *migrator.ColumnType
 			)
 			for _, columnType := range columnTypes {
 				if columnType.Name() == field.DBName {
-					fieldColumnType, _ = columnType.(migrator.ColumnType)
+					fieldColumnType, _ = columnType.(*migrator.ColumnType)
 				}
 			}
 
@@ -384,10 +384,11 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			if err != nil {
 				return err
 			}
-			for _, columnType := range columnTypes {
+			for i, columnType := range columnTypes {
 				for _, c := range rawColumnTypes {
 					if c.Name() == columnType.Name() {
-						columnType.(*migrator.ColumnType).SQLColumnType = c
+						mc := columnTypes[i].(*migrator.ColumnType)
+						mc.SQLColumnType = c
 						break
 					}
 				}
@@ -405,8 +406,8 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			for columnTypeRows.Next() {
 				var name, columnType string
 				columnTypeRows.Scan(&name, &columnType)
-				for _, c := range columnTypes {
-					mc := c.(*migrator.ColumnType)
+				for i := range columnTypes {
+					mc := columnTypes[i].(*migrator.ColumnType)
 					if mc.NameValue.String == name {
 						switch columnType {
 						case "PRIMARY KEY":
@@ -435,8 +436,8 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			for dataTypeRows.Next() {
 				var name, dataType string
 				dataTypeRows.Scan(&name, &dataType)
-				for _, c := range columnTypes {
-					mc := c.(*migrator.ColumnType)
+				for i := range columnTypes {
+					mc := columnTypes[i].(*migrator.ColumnType)
 					if mc.NameValue.String == name {
 						mc.ColumnTypeValue = sql.NullString{String: dataType, Valid: true}
 						break
