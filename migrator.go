@@ -363,7 +363,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			}
 
 			if column.DefaultValueValue.Valid {
-				column.DefaultValueValue.String = regexp.MustCompile("'(.*)'::[\\w]+$").ReplaceAllString(column.DefaultValueValue.String, "$1")
+				column.DefaultValueValue.String = regexp.MustCompile(`'(.*)'::[\w]+$`).ReplaceAllString(column.DefaultValueValue.String, "$1")
 			}
 
 			if datetimePrecision.Valid {
@@ -453,10 +453,8 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 
 func (m Migrator) GetRows(currentSchema interface{}, table interface{}) (*sql.Rows, error) {
 	name := table.(string)
-	if currentSchema != nil {
-		if _, ok := currentSchema.(string); ok {
-			name = fmt.Sprintf("%v.%v", currentSchema, table)
-		}
+	if _, ok := currentSchema.(string); ok {
+		name = fmt.Sprintf("%v.%v", currentSchema, table)
 	}
 	return m.DB.Session(&gorm.Session{}).Table(name).Limit(1).Rows()
 }

@@ -138,7 +138,7 @@ func (dialector Dialector) QuoteTo(writer clause.Writer, str string) {
 	writer.WriteByte('"')
 }
 
-var numericPlaceholder = regexp.MustCompile("\\$(\\d+)")
+var numericPlaceholder = regexp.MustCompile(`\$(\d+)`)
 
 func (dialector Dialector) Explain(sql string, vars ...interface{}) string {
 	return logger.ExplainSQL(sql, numericPlaceholder, `'`, vars...)
