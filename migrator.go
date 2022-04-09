@@ -249,8 +249,27 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 			return m.DB.Connection(func(tx *gorm.DB) error {
 				fileType := clause.Expr{SQL: m.DataTypeOf(field)}
 				if fieldColumnType.DatabaseTypeName() != fileType.SQL {
-					if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType).Error; err != nil {
-						return err
+					fileColumnAutoIncrement, _ := fieldColumnType.AutoIncrement()
+					if field.AutoIncrement && fileColumnAutoIncrement { // update
+						serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
+						if t, _ := fieldColumnType.ColumnType(); t != serialDatabaseType {
+							if err := m.UpdateSequence(tx, stmt, field, serialDatabaseType); err != nil {
+								return err
+							}
+						}
+					} else if field.AutoIncrement && !fileColumnAutoIncrement { // create
+						serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
+						if err := m.CreateSequence(tx, stmt, field, serialDatabaseType); err != nil {
+							return err
+						}
+					} else if !field.AutoIncrement && fileColumnAutoIncrement { // delete
+						if err := m.DeleteSequence(tx, stmt, field, fileType); err != nil {
+							return err
+						}
+					} else {
+						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType).Error; err != nil {
+							return err
+						}
 					}
 				}
 
@@ -474,4 +493,75 @@ func (m Migrator) CurrentSchema(stmt *gorm.Statement, table string) (interface{}
 		}
 	}
 	return clause.Expr{SQL: "CURRENT_SCHEMA()"}, table
+}
+
+func (m Migrator) CreateSequence(tx *gorm.DB, stmt *gorm.Statement, field *schema.Field,
+	serialDatabaseType string) (err error) {
+
+	_, table := m.CurrentSchema(stmt, stmt.Table)
+	tableName := table.(string)
+
+	sequenceName := strings.Join([]string{tableName, field.DBName, "seq"}, "_")
+	if err = tx.Exec(`CREATE SEQUENCE IF NOT EXISTS ? AS ?`, clause.Expr{SQL: sequenceName},
+		clause.Expr{SQL: serialDatabaseType}).Error; err != nil {
+		return err
+	}
+
+	if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET DEFAULT nextval('?')",
+		clause.Expr{SQL: tableName}, clause.Expr{SQL: field.DBName}, clause.Expr{SQL: sequenceName}).Error; err != nil {
+		return err
+	}
+
+	if err := tx.Exec("ALTER SEQUENCE ? OWNED BY ?.?",
+		clause.Expr{SQL: sequenceName}, clause.Expr{SQL: tableName}, clause.Expr{SQL: field.DBName}).Error; err != nil {
+		return err
+	}
+	return
+}
+
+func (m Migrator) UpdateSequence(tx *gorm.DB, stmt *gorm.Statement, field *schema.Field,
+	serialDatabaseType string) (err error) {
+
+	_, table := m.CurrentSchema(stmt, stmt.Table)
+
+	// DefaultValueValue is reset by ColumnTypes, search again.
+	var columnDefault string
+	err = tx.Raw(
+		`SELECT column_default FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+		table, field.DBName).Scan(&columnDefault).Error
+
+	if err != nil {
+		return err
+	}
+
+	sequenceName := strings.TrimSuffix(
+		strings.TrimPrefix(columnDefault, `nextval('`),
+		`'::regclass)`,
+	)
+
+	if err = tx.Exec(`ALTER SEQUENCE IF EXISTS ? AS ?`, clause.Expr{SQL: sequenceName}, clause.Expr{SQL: serialDatabaseType}).Error; err != nil {
+		return err
+	}
+
+	if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?",
+		m.CurrentTable(stmt), clause.Expr{SQL: field.DBName}, clause.Expr{SQL: serialDatabaseType}).Error; err != nil {
+		return err
+	}
+	return
+}
+
+func (m Migrator) DeleteSequence(tx *gorm.DB, stmt *gorm.Statement, field *schema.Field,
+	fileType clause.Expr) (err error) {
+
+	if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType).Error; err != nil {
+		return err
+	}
+
+	if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? DROP DEFAULT",
+		m.CurrentTable(stmt), clause.Expr{SQL: field.DBName}).Error; err != nil {
+		return err
+	}
+
+	// is it necessary to delete sequence ?
+	return
 }
