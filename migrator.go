@@ -249,20 +249,20 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 			return m.DB.Connection(func(tx *gorm.DB) error {
 				fileType := clause.Expr{SQL: m.DataTypeOf(field)}
 				if fieldColumnType.DatabaseTypeName() != fileType.SQL {
-					fileColumnAutoIncrement, _ := fieldColumnType.AutoIncrement()
-					if field.AutoIncrement && fileColumnAutoIncrement { // update
+					filedColumnAutoIncrement, _ := fieldColumnType.AutoIncrement()
+					if field.AutoIncrement && filedColumnAutoIncrement { // update
 						serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
 						if t, _ := fieldColumnType.ColumnType(); t != serialDatabaseType {
 							if err := m.UpdateSequence(tx, stmt, field, serialDatabaseType); err != nil {
 								return err
 							}
 						}
-					} else if field.AutoIncrement && !fileColumnAutoIncrement { // create
+					} else if field.AutoIncrement && !filedColumnAutoIncrement { // create
 						serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
 						if err := m.CreateSequence(tx, stmt, field, serialDatabaseType); err != nil {
 							return err
 						}
-					} else if !field.AutoIncrement && fileColumnAutoIncrement { // delete
+					} else if !field.AutoIncrement && filedColumnAutoIncrement { // delete
 						if err := m.DeleteSequence(tx, stmt, field, fileType); err != nil {
 							return err
 						}
