@@ -522,22 +522,10 @@ func (m Migrator) CreateSequence(tx *gorm.DB, stmt *gorm.Statement, field *schem
 func (m Migrator) UpdateSequence(tx *gorm.DB, stmt *gorm.Statement, field *schema.Field,
 	serialDatabaseType string) (err error) {
 
-	_, table := m.CurrentSchema(stmt, stmt.Table)
-
-	// DefaultValueValue is reset by ColumnTypes, search again.
-	var columnDefault string
-	err = tx.Raw(
-		`SELECT column_default FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
-		table, field.DBName).Scan(&columnDefault).Error
-
+	sequenceName, err := m.getColumnSequenceName(tx, stmt, field)
 	if err != nil {
 		return err
 	}
-
-	sequenceName := strings.TrimSuffix(
-		strings.TrimPrefix(columnDefault, `nextval('`),
-		`'::regclass)`,
-	)
 
 	if err = tx.Exec(`ALTER SEQUENCE IF EXISTS ? AS ?`, clause.Expr{SQL: sequenceName}, clause.Expr{SQL: serialDatabaseType}).Error; err != nil {
 		return err
@@ -553,6 +541,11 @@ func (m Migrator) UpdateSequence(tx *gorm.DB, stmt *gorm.Statement, field *schem
 func (m Migrator) DeleteSequence(tx *gorm.DB, stmt *gorm.Statement, field *schema.Field,
 	fileType clause.Expr) (err error) {
 
+	sequenceName, err := m.getColumnSequenceName(tx, stmt, field)
+	if err != nil {
+		return err
+	}
+
 	if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType).Error; err != nil {
 		return err
 	}
@@ -562,6 +555,30 @@ func (m Migrator) DeleteSequence(tx *gorm.DB, stmt *gorm.Statement, field *schem
 		return err
 	}
 
-	// is it necessary to delete sequence ?
+	if err = tx.Exec(`DROP SEQUENCE IF EXISTS ?`, clause.Expr{SQL: sequenceName}).Error; err != nil {
+		return err
+	}
+
+	return
+}
+
+func (m Migrator) getColumnSequenceName(tx *gorm.DB, stmt *gorm.Statement, field *schema.Field) (
+	sequenceName string, err error) {
+	_, table := m.CurrentSchema(stmt, stmt.Table)
+
+	// DefaultValueValue is reset by ColumnTypes, search again.
+	var columnDefault string
+	err = tx.Raw(
+		`SELECT column_default FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+		table, field.DBName).Scan(&columnDefault).Error
+
+	if err != nil {
+		return "", err
+	}
+
+	sequenceName = strings.TrimSuffix(
+		strings.TrimPrefix(columnDefault, `nextval('`),
+		`'::regclass)`,
+	)
 	return
 }
