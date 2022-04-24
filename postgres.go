@@ -206,3 +206,16 @@ func (dialectopr Dialector) RollbackTo(tx *gorm.DB, name string) error {
 	tx.Exec("ROLLBACK TO SAVEPOINT " + name)
 	return nil
 }
+
+func getSerialDatabaseType(s string) (dbType string, ok bool) {
+	switch s {
+	case "smallserial":
+		return "smallint", true
+	case "serial":
+		return "integer", true
+	case "bigserial":
+		return "bigint", true
+	default:
+		return "", false
+	}
+}
