@@ -573,7 +573,7 @@ func (m Migrator) getColumnSequenceName(tx *gorm.DB, stmt *gorm.Statement, field
 		table, field.DBName).Scan(&columnDefault).Error
 
 	if err != nil {
-		return "", err
+		return
 	}
 
 	sequenceName = strings.TrimSuffix(
