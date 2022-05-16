@@ -246,73 +246,72 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 				}
 			}
 
-			return m.DB.Connection(func(tx *gorm.DB) error {
-				fileType := clause.Expr{SQL: m.DataTypeOf(field)}
-				if fieldColumnType.DatabaseTypeName() != fileType.SQL {
-					filedColumnAutoIncrement, _ := fieldColumnType.AutoIncrement()
-					if field.AutoIncrement && filedColumnAutoIncrement { // update
-						serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
-						if t, _ := fieldColumnType.ColumnType(); t != serialDatabaseType {
-							if err := m.UpdateSequence(tx, stmt, field, serialDatabaseType); err != nil {
-								return err
-							}
-						}
-					} else if field.AutoIncrement && !filedColumnAutoIncrement { // create
-						serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
-						if err := m.CreateSequence(tx, stmt, field, serialDatabaseType); err != nil {
-							return err
-						}
-					} else if !field.AutoIncrement && filedColumnAutoIncrement { // delete
-						if err := m.DeleteSequence(tx, stmt, field, fileType); err != nil {
-							return err
-						}
-					} else {
-						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType).Error; err != nil {
+			tx := m.DB
+			fileType := clause.Expr{SQL: m.DataTypeOf(field)}
+			if fieldColumnType.DatabaseTypeName() != fileType.SQL {
+				filedColumnAutoIncrement, _ := fieldColumnType.AutoIncrement()
+				if field.AutoIncrement && filedColumnAutoIncrement { // update
+					serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
+					if t, _ := fieldColumnType.ColumnType(); t != serialDatabaseType {
+						if err := m.UpdateSequence(tx, stmt, field, serialDatabaseType); err != nil {
 							return err
 						}
 					}
-				}
-
-				if null, _ := fieldColumnType.Nullable(); null == field.NotNull {
-					if field.NotNull {
-						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET NOT NULL", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
-							return err
-						}
-					} else {
-						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? DROP NOT NULL", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
-							return err
-						}
+				} else if field.AutoIncrement && !filedColumnAutoIncrement { // create
+					serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
+					if err := m.CreateSequence(tx, stmt, field, serialDatabaseType); err != nil {
+						return err
 					}
-				}
-
-				if uniq, _ := fieldColumnType.Unique(); uniq != field.Unique {
-					idxName := clause.Column{Name: m.DB.Config.NamingStrategy.IndexName(stmt.Table, field.DBName)}
-					if err := tx.Exec("ALTER TABLE ? ADD CONSTRAINT ? UNIQUE(?)", m.CurrentTable(stmt), idxName, clause.Column{Name: field.DBName}).Error; err != nil {
+				} else if !field.AutoIncrement && filedColumnAutoIncrement { // delete
+					if err := m.DeleteSequence(tx, stmt, field, fileType); err != nil {
+						return err
+					}
+				} else {
+					if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType).Error; err != nil {
 						return err
 					}
 				}
+			}
 
-				if v, _ := fieldColumnType.DefaultValue(); v != field.DefaultValue {
-					if field.HasDefaultValue && (field.DefaultValueInterface != nil || field.DefaultValue != "") {
-						if field.DefaultValueInterface != nil {
-							defaultStmt := &gorm.Statement{Vars: []interface{}{field.DefaultValueInterface}}
-							m.Dialector.BindVarTo(defaultStmt, defaultStmt, field.DefaultValueInterface)
-							if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET DEFAULT ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: m.Dialector.Explain(defaultStmt.SQL.String(), field.DefaultValueInterface)}).Error; err != nil {
-								return err
-							}
-						} else if field.DefaultValue != "(-)" {
-							if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET DEFAULT ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: field.DefaultValue}).Error; err != nil {
-								return err
-							}
-						} else {
-							if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? DROP DEFAULT", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: field.DefaultValue}).Error; err != nil {
-								return err
-							}
+			if null, _ := fieldColumnType.Nullable(); null == field.NotNull {
+				if field.NotNull {
+					if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET NOT NULL", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
+						return err
+					}
+				} else {
+					if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? DROP NOT NULL", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
+						return err
+					}
+				}
+			}
+
+			if uniq, _ := fieldColumnType.Unique(); !(uniq == field.Unique || uniq == field.UniqueIndex) {
+				idxName := clause.Column{Name: m.DB.Config.NamingStrategy.IndexName(stmt.Table, field.DBName)}
+				if err := tx.Exec("ALTER TABLE ? ADD CONSTRAINT ? UNIQUE(?)", m.CurrentTable(stmt), idxName, clause.Column{Name: field.DBName}).Error; err != nil {
+					return err
+				}
+			}
+
+			if v, _ := fieldColumnType.DefaultValue(); v != field.DefaultValue {
+				if field.HasDefaultValue && (field.DefaultValueInterface != nil || field.DefaultValue != "") {
+					if field.DefaultValueInterface != nil {
+						defaultStmt := &gorm.Statement{Vars: []interface{}{field.DefaultValueInterface}}
+						m.Dialector.BindVarTo(defaultStmt, defaultStmt, field.DefaultValueInterface)
+						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET DEFAULT ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: m.Dialector.Explain(defaultStmt.SQL.String(), field.DefaultValueInterface)}).Error; err != nil {
+							return err
+						}
+					} else if field.DefaultValue != "(-)" {
+						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? SET DEFAULT ?", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: field.DefaultValue}).Error; err != nil {
+							return err
+						}
+					} else {
+						if err := tx.Exec("ALTER TABLE ? ALTER COLUMN ? DROP DEFAULT", m.CurrentTable(stmt), clause.Column{Name: field.DBName}, clause.Expr{SQL: field.DefaultValue}).Error; err != nil {
+							return err
 						}
 					}
 				}
-				return nil
-			})
+			}
+			return nil
 		}
 		return fmt.Errorf("failed to look up field with name: %s", field)
 	})
@@ -374,6 +373,11 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 
 			if typeLenValue.Valid && typeLenValue.Int64 > 0 {
 				column.LengthValue = typeLenValue
+			}
+
+			// the timestamptz return size 0, because parse FieldStruct is 0
+			if column.DataTypeValue.String == "timestamptz" {
+				column.LengthValue.Int64 = 0
 			}
 
 			if strings.HasPrefix(column.DefaultValueValue.String, "nextval('") && strings.HasSuffix(column.DefaultValueValue.String, "seq'::regclass)") {
