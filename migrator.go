@@ -375,6 +375,11 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 				column.LengthValue = typeLenValue
 			}
 
+			// the timestamptz return size 0, because parse FieldStruct is 0
+			if column.DataTypeValue.String == "timestamptz" {
+				column.LengthValue.Int64 = 0
+			}
+
 			if strings.HasPrefix(column.DefaultValueValue.String, "nextval('") && strings.HasSuffix(column.DefaultValueValue.String, "seq'::regclass)") {
 				column.AutoIncrementValue = sql.NullBool{Bool: true, Valid: true}
 				column.DefaultValueValue = sql.NullString{}

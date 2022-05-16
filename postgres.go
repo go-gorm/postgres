@@ -163,13 +163,13 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 				return "bigserial"
 			}
 		} else {
-			switch {
+			switch { // return the same value with db
 			case size <= 16:
-				return "smallint"
+				return "int2"
 			case size <= 32:
-				return "integer"
+				return "int4"
 			default:
-				return "bigint"
+				return "int8"
 			}
 		}
 	case schema.Float:
@@ -206,13 +206,13 @@ func (dialectopr Dialector) RollbackTo(tx *gorm.DB, name string) error {
 }
 
 func getSerialDatabaseType(s string) (dbType string, ok bool) {
-	switch s {
+	switch s { // return the same value with db
 	case "smallserial":
-		return "smallint", true
+		return "int2", true
 	case "serial":
-		return "integer", true
+		return "int4", true
 	case "bigserial":
-		return "bigint", true
+		return "int8", true
 	default:
 		return "", false
 	}
