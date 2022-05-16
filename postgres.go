@@ -186,10 +186,8 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		}
 		return "text"
 	case schema.Time:
-		if field.Precision > 0 {
-			return fmt.Sprintf("timestamptz(%d)", field.Precision)
-		}
-		return "timestamptz"
+		// in postgresql, Precision == 0, This means being accurate to the seconds.
+		return fmt.Sprintf("timestamptz(%d)", field.Precision)
 	case schema.Bytes:
 		return "bytea"
 	}
