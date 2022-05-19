@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jackc/pgx/v4"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/migrator"
@@ -473,7 +474,12 @@ func (m Migrator) GetRows(currentSchema interface{}, table interface{}) (*sql.Ro
 	if _, ok := currentSchema.(string); ok {
 		name = fmt.Sprintf("%v.%v", currentSchema, table)
 	}
-	return m.DB.Session(&gorm.Session{}).Table(name).Limit(1).Rows()
+
+	return m.DB.Session(&gorm.Session{}).Table(name).Limit(1).Scopes(func(d *gorm.DB) *gorm.DB {
+		// use simple protocol
+		d.Statement.Vars = append(d.Statement.Vars, pgx.QuerySimpleProtocol(true))
+		return d
+	}).Rows()
 }
 
 func (m Migrator) CurrentSchema(stmt *gorm.Statement, table string) (interface{}, interface{}) {
