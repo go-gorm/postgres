@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
@@ -165,11 +164,11 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		} else {
 			switch {
 			case size <= 16:
-				return "smallint"
+				return "int2"
 			case size <= 32:
-				return "integer"
+				return "int4"
 			default:
-				return "bigint"
+				return "int8"
 			}
 		}
 	case schema.Float:
@@ -186,10 +185,8 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		}
 		return "text"
 	case schema.Time:
-		if field.Precision > 0 {
-			return fmt.Sprintf("timestamptz(%d)", field.Precision)
-		}
-		return "timestamptz"
+		// in postgresql, Precision == 0, This means being accurate to the seconds.
+		return fmt.Sprintf("timestamptz(%d)", field.Precision)
 	case schema.Bytes:
 		return "bytea"
 	}
@@ -210,11 +207,11 @@ func (dialectopr Dialector) RollbackTo(tx *gorm.DB, name string) error {
 func getSerialDatabaseType(s string) (dbType string, ok bool) {
 	switch s {
 	case "smallserial":
-		return "smallint", true
+		return "int2", true
 	case "serial":
-		return "integer", true
+		return "int4", true
 	case "bigserial":
-		return "bigint", true
+		return "int8", true
 	default:
 		return "", false
 	}
