@@ -13,6 +13,28 @@ import (
 	"gorm.io/gorm/schema"
 )
 
+const indexSql = `
+select
+    t.relname as table_name,
+    i.relname as index_name,
+    a.attname as column_name,
+		case ix.indisunique  
+		when 't' THEN '0'
+		when 'f' then '1' end as non_unique
+from
+    pg_class t,
+    pg_class i,
+    pg_index ix,
+    pg_attribute a
+where
+    t.oid = ix.indrelid
+    and i.oid = ix.indexrelid
+    and a.attrelid = t.oid
+    and a.attnum = ANY(ix.indkey)
+    and t.relkind = 'r'
+    and t.relname = ?
+`
+
 type Migrator struct {
 	migrator.Migrator
 }
@@ -590,53 +612,13 @@ func (m Migrator) getColumnSequenceName(tx *gorm.DB, stmt *gorm.Statement, field
 func (m Migrator) GetIndexes(value interface{}) ([]gorm.Index, error) {
 	indexes := make([]gorm.Index, 0)
 
-	indexs := make([]struct {
-		TableName string `gorm:"column:tablename"`
-		IndexName string `gorm:"column:indexname"`
-		IndexDef  string `gorm:"column:indexdef"`
-	}, 0, 5)
-
 	err := m.RunWithValue(value, func(stmt *gorm.Statement) error {
-		indexSql := "select tablename,indexname,tablespace,indexdef from pg_indexes where tablename=?"
-		scanErr := m.DB.Raw(indexSql, m).Scan(&indexs).Error
+		result := make([]*Index, 0)
+		scanErr := m.DB.Raw(indexSql, m).Scan(&result).Error
 		if scanErr != nil {
 			return scanErr
 		}
-		result := make([]*Index, 0)
 
-		reg := regexp.MustCompile(`\([^\(\)]*\)`) // reg get the index columns
-		if reg == nil {
-			return fmt.Errorf("regexp err")
-		}
-		for _, index := range indexs {
-
-			// get index fields
-			columns := reg.FindAllString(index.IndexDef, -1)
-			if len(columns) < 1 {
-				return fmt.Errorf("columns is zero")
-			}
-			// def eg: CREATE INDEX "user.i_user_id_name" ON public.t_user USING btree (f_name, f_user_id)
-			columns[0] = strings.TrimFunc(columns[0], func(r rune) bool {
-				if string(r) == `(` || string(r) == `)` {
-					return true
-				}
-				return false
-			})
-
-			for _, s := range strings.Split(columns[0] /*get the first */, ",") {
-				ind := &Index{}
-				ind.IndexName = index.IndexName
-				ind.TableName = index.TableName
-				ind.NonUnique = 1
-				if strings.Contains(index.IndexDef, "CREATE UNIQUE") {
-					ind.NonUnique = 0
-				}
-				ind.ColumnName = strings.TrimSpace(s)
-				//ind.SeqInIndex = int32(i + 1)
-				result = append(result, ind)
-			}
-
-		}
 		if len(result) == 0 {
 			return nil
 		}
@@ -671,10 +653,10 @@ func (m Migrator) GetIndexes(value interface{}) ([]gorm.Index, error) {
 
 // Index table index info
 type Index struct {
-	TableName  string `gorm:"column:TABLE_NAME"`
-	ColumnName string `gorm:"column:COLUMN_NAME"`
-	IndexName  string `gorm:"column:INDEX_NAME"`
-	NonUnique  int32  `gorm:"column:NON_UNIQUE"`
+	TableName  string `gorm:"column:table_name"`
+	ColumnName string `gorm:"column:column_name"`
+	IndexName  string `gorm:"column:index_name"`
+	NonUnique  int32  `gorm:"column:non_unique"`
 }
 
 func groupByIndexName(indexList []*Index) map[string][]*Index {
