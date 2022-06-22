@@ -18,9 +18,8 @@ select
     t.relname as table_name,
     i.relname as index_name,
     a.attname as column_name,
-		case ix.indisunique  
-		when 't' THEN '0'
-		when 'f' then '1' end as non_unique
+    ix.indisunique as non_unique,
+	ix.indisprimary as primary
 from
     pg_class t,
     pg_class i,
@@ -614,30 +613,21 @@ func (m Migrator) GetIndexes(value interface{}) ([]gorm.Index, error) {
 
 	err := m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		result := make([]*Index, 0)
-		scanErr := m.DB.Raw(indexSql, m).Scan(&result).Error
+		scanErr := m.DB.Raw(indexSql, stmt.Table).Scan(&result).Error
 		if scanErr != nil {
 			return scanErr
 		}
-
-		if len(result) == 0 {
-			return nil
-		}
-
 		indexMap := groupByIndexName(result)
-
 		for _, idx := range indexMap {
-			if len(idx) == 0 {
-				continue
-			}
 			tempIdx := &migrator.Index{
 				TableName: idx[0].TableName,
 				NameValue: idx[0].IndexName,
 				PrimaryKeyValue: sql.NullBool{
-					Bool:  idx[0].IndexName == idx[0].TableName+"_pkey",
+					Bool:  idx[0].Primary,
 					Valid: true,
 				},
 				UniqueValue: sql.NullBool{
-					Bool:  idx[0].NonUnique == 0,
+					Bool:  idx[0].NonUnique,
 					Valid: true,
 				},
 			}
@@ -656,14 +646,12 @@ type Index struct {
 	TableName  string `gorm:"column:table_name"`
 	ColumnName string `gorm:"column:column_name"`
 	IndexName  string `gorm:"column:index_name"`
-	NonUnique  int32  `gorm:"column:non_unique"`
+	NonUnique  bool   `gorm:"column:non_unique"`
+	Primary    bool   `gorm:"column:primary"`
 }
 
 func groupByIndexName(indexList []*Index) map[string][]*Index {
 	columnIndexMap := make(map[string][]*Index, len(indexList))
-	if len(indexList) == 0 {
-		return columnIndexMap
-	}
 	for _, idx := range indexList {
 		if idx == nil {
 			continue
