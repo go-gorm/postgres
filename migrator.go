@@ -653,9 +653,6 @@ type Index struct {
 func groupByIndexName(indexList []*Index) map[string][]*Index {
 	columnIndexMap := make(map[string][]*Index, len(indexList))
 	for _, idx := range indexList {
-		if idx == nil {
-			continue
-		}
 		columnIndexMap[idx.IndexName] = append(columnIndexMap[idx.IndexName], idx)
 	}
 	return columnIndexMap
