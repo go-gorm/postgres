@@ -13,6 +13,27 @@ import (
 	"gorm.io/gorm/schema"
 )
 
+const indexSql = `
+select
+    t.relname as table_name,
+    i.relname as index_name,
+    a.attname as column_name,
+    ix.indisunique as non_unique,
+	ix.indisprimary as primary
+from
+    pg_class t,
+    pg_class i,
+    pg_index ix,
+    pg_attribute a
+where
+    t.oid = ix.indrelid
+    and i.oid = ix.indexrelid
+    and a.attrelid = t.oid
+    and a.attnum = ANY(ix.indkey)
+    and t.relkind = 'r'
+    and t.relname = ?
+`
+
 type Migrator struct {
 	migrator.Migrator
 }
@@ -585,4 +606,54 @@ func (m Migrator) getColumnSequenceName(tx *gorm.DB, stmt *gorm.Statement, field
 		`'::regclass)`,
 	)
 	return
+}
+
+func (m Migrator) GetIndexes(value interface{}) ([]gorm.Index, error) {
+	indexes := make([]gorm.Index, 0)
+
+	err := m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		result := make([]*Index, 0)
+		scanErr := m.DB.Raw(indexSql, stmt.Table).Scan(&result).Error
+		if scanErr != nil {
+			return scanErr
+		}
+		indexMap := groupByIndexName(result)
+		for _, idx := range indexMap {
+			tempIdx := &migrator.Index{
+				TableName: idx[0].TableName,
+				NameValue: idx[0].IndexName,
+				PrimaryKeyValue: sql.NullBool{
+					Bool:  idx[0].Primary,
+					Valid: true,
+				},
+				UniqueValue: sql.NullBool{
+					Bool:  idx[0].NonUnique,
+					Valid: true,
+				},
+			}
+			for _, x := range idx {
+				tempIdx.ColumnList = append(tempIdx.ColumnList, x.ColumnName)
+			}
+			indexes = append(indexes, tempIdx)
+		}
+		return nil
+	})
+	return indexes, err
+}
+
+// Index table index info
+type Index struct {
+	TableName  string `gorm:"column:table_name"`
+	ColumnName string `gorm:"column:column_name"`
+	IndexName  string `gorm:"column:index_name"`
+	NonUnique  bool   `gorm:"column:non_unique"`
+	Primary    bool   `gorm:"column:primary"`
+}
+
+func groupByIndexName(indexList []*Index) map[string][]*Index {
+	columnIndexMap := make(map[string][]*Index, len(indexList))
+	for _, idx := range indexList {
+		columnIndexMap[idx.IndexName] = append(columnIndexMap[idx.IndexName], idx)
+	}
+	return columnIndexMap
 }
