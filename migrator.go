@@ -478,6 +478,13 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 					mc := c.(*migrator.ColumnType)
 					if mc.NameValue.String == name {
 						mc.ColumnTypeValue = sql.NullString{String: dataType, Valid: true}
+						// handle array type
+						// _text -> text[] , _int4 -> integer[]
+						// Not support array size limits and array size limits because:
+						// https://www.postgresql.org/docs/current/arrays.html#ARRAYS-DECLARATION
+						if strings.HasPrefix(mc.DataTypeValue.String, "_") {
+							mc.DataTypeValue = sql.NullString{String: dataType, Valid: true}
+						}
 						break
 					}
 				}
