@@ -194,6 +194,21 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		return "bytea"
 	}
 
+	if field.AutoIncrement {
+		size := field.Size
+		if field.GORMDataType == schema.Uint {
+			size++
+		}
+		switch {
+		case size <= 16:
+			return "smallserial"
+		case size <= 32:
+			return "serial"
+		default:
+			return "bigserial"
+		}
+	}
+
 	return string(field.DataType)
 }
 
