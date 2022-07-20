@@ -192,24 +192,30 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		return "timestamptz"
 	case schema.Bytes:
 		return "bytea"
-	}
+	default:
+		sqlType := string(field.DataType)
 
-	if field.AutoIncrement {
-		size := field.Size
-		if field.GORMDataType == schema.Uint {
-			size++
+		autoIncrement := field.AutoIncrement
+		if !autoIncrement {
+			_, autoIncrement = field.TagSettings["AUTO_INCREMENT"]
 		}
-		switch {
-		case size <= 16:
-			return "smallserial"
-		case size <= 32:
-			return "serial"
-		default:
-			return "bigserial"
+		if field.AutoIncrement {
+			size := field.Size
+			if field.GORMDataType == schema.Uint {
+				size++
+			}
+			switch {
+			case size <= 16:
+				sqlType = "smallserial"
+			case size <= 32:
+				sqlType = "serial"
+			default:
+				sqlType = "bigserial"
+			}
 		}
-	}
 
-	return string(field.DataType)
+		return sqlType
+	}
 }
 
 func (dialectopr Dialector) SavePoint(tx *gorm.DB, name string) error {
