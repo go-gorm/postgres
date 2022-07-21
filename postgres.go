@@ -195,10 +195,6 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 	default:
 		sqlType := string(field.DataType)
 
-		autoIncrement := field.AutoIncrement
-		if !autoIncrement {
-			_, autoIncrement = field.TagSettings["AUTO_INCREMENT"]
-		}
 		if field.AutoIncrement {
 			size := field.Size
 			if field.GORMDataType == schema.Uint {
