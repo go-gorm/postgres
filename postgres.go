@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/stdlib"
@@ -200,7 +201,7 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 func (dialector Dialector) getSchemaCustomType(field *schema.Field) string {
 	sqlType := string(field.DataType)
 
-	if field.AutoIncrement {
+	if field.AutoIncrement && !strings.Contains(strings.ToLower(sqlType), "serial") {
 		size := field.Size
 		if field.GORMDataType == schema.Uint {
 			size++
