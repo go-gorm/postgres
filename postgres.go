@@ -193,25 +193,29 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 	case schema.Bytes:
 		return "bytea"
 	default:
-		sqlType := string(field.DataType)
-
-		if field.AutoIncrement {
-			size := field.Size
-			if field.GORMDataType == schema.Uint {
-				size++
-			}
-			switch {
-			case size <= 16:
-				sqlType = "smallserial"
-			case size <= 32:
-				sqlType = "serial"
-			default:
-				sqlType = "bigserial"
-			}
-		}
-
-		return sqlType
+		return dialector.getSchemaCustomType(field)
 	}
+}
+
+func (dialector Dialector) getSchemaCustomType(field *schema.Field) string {
+	sqlType := string(field.DataType)
+
+	if field.AutoIncrement {
+		size := field.Size
+		if field.GORMDataType == schema.Uint {
+			size++
+		}
+		switch {
+		case size <= 16:
+			sqlType = "smallserial"
+		case size <= 32:
+			sqlType = "serial"
+		default:
+			sqlType = "bigserial"
+		}
+	}
+
+	return sqlType
 }
 
 func (dialectopr Dialector) SavePoint(tx *gorm.DB, name string) error {
