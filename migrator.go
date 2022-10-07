@@ -517,7 +517,7 @@ func (m Migrator) GetRows(currentSchema interface{}, table interface{}) (*sql.Ro
 
 	return m.DB.Session(&gorm.Session{}).Table(name).Limit(1).Scopes(func(d *gorm.DB) *gorm.DB {
 		// use simple protocol
-		if !m.DB.PrepareStmt && d.Statement.Vars != nil {
+		if !m.DB.PrepareStmt && len(d.Statement.Vars) != 0 {
 			d.Statement.Vars = append(d.Statement.Vars, pgx.QuerySimpleProtocol(true))
 		}
 		return d
