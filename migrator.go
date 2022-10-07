@@ -34,6 +34,17 @@ where
     and t.relname = ?
 `
 
+var typeAliasMap = map[string][]string{
+	"int2":     {"smallint"},
+	"int4":     {"integer"},
+	"int8":     {"bigint"},
+	"smallint": {"int2"},
+	"integer":  {"int4"},
+	"bigint":   {"int8"},
+	"decimal":  {"numeric"},
+	"numeric":  {"decimal"},
+}
+
 type Migrator struct {
 	migrator.Migrator
 }
@@ -675,4 +686,8 @@ func groupByIndexName(indexList []*Index) map[string][]*Index {
 		columnIndexMap[idx.IndexName] = append(columnIndexMap[idx.IndexName], idx)
 	}
 	return columnIndexMap
+}
+
+func (m Migrator) GetTypeAliases(databaseTypeName string) []string {
+	return typeAliasMap[databaseTypeName]
 }
