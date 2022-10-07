@@ -527,8 +527,9 @@ func (m Migrator) GetRows(currentSchema interface{}, table interface{}) (*sql.Ro
 	}
 
 	return m.DB.Session(&gorm.Session{}).Table(name).Limit(1).Scopes(func(d *gorm.DB) *gorm.DB {
+		dialector, _ := m.Dialector.(Dialector)
 		// use simple protocol
-		if !m.DB.PrepareStmt && len(d.Statement.Vars) != 0 {
+		if !m.DB.PrepareStmt && (dialector.Config != nil && (dialector.Config.DriverName == "" || dialector.Config.DriverName == "pgx")) {
 			d.Statement.Vars = append(d.Statement.Vars, pgx.QuerySimpleProtocol(true))
 		}
 		return d
