@@ -249,10 +249,9 @@ func (m Migrator) MigrateColumn(value interface{}, field *schema.Field, columnTy
 		checkSQL += "AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = ? AND relnamespace = "
 		checkSQL += "(SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = ?))"
 		m.DB.Raw(checkSQL, values...).Scan(&description)
-		comment := field.Comment
-		if comment != "" {
-			comment = comment[1 : len(comment)-1]
-		}
+
+		comment := strings.Trim(field.Comment, "'")
+		comment = strings.Trim(comment, `"`)
 		if field.Comment != "" && comment != description {
 			if err := m.DB.Exec(
 				"COMMENT ON COLUMN ?.? IS ?",
