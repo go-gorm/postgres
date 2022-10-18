@@ -528,14 +528,28 @@ func (m Migrator) GetRows(currentSchema interface{}, table interface{}) (*sql.Ro
 		name = fmt.Sprintf("%v.%v", currentSchema, table)
 	}
 
-	return m.DB.Session(&gorm.Session{}).Table(name).Limit(1).Scopes(func(d *gorm.DB) *gorm.DB {
-		dialector, _ := m.Dialector.(Dialector)
-		// use simple protocol
-		if !m.DB.PrepareStmt && (dialector.Config != nil && (dialector.Config.DriverName == "" || dialector.Config.DriverName == "pgx")) {
-			d.Statement.Vars = append(d.Statement.Vars, pgx.QuerySimpleProtocol(true))
+	var res []interface{}
+	sql := m.DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+		return tx.Table(name).Limit(1).Find(&res)
+	})
+	dialector, _ := m.Dialector.(Dialector)
+
+	// skip the prepared stmt
+	if m.DB.PrepareStmt {
+		if pdb, ok := m.DB.ConnPool.(*gorm.PreparedStmtDB); ok {
+			pdb.Mux.Lock()
+			if stmt, ok := pdb.Stmts[sql]; ok {
+				go stmt.Close()
+				delete(pdb.Stmts, sql)
+			}
+			pdb.Mux.Unlock()
 		}
-		return d
-	}).Rows()
+	} else if dialector.Config != nil && (dialector.Config.DriverName == "" || dialector.Config.DriverName == "pgx") {
+		// use simple protocol for pgx
+		return m.DB.Raw(sql, pgx.QuerySimpleProtocol(true)).Rows()
+	}
+
+	return m.DB.Raw(sql).Rows()
 }
 
 func (m Migrator) CurrentSchema(stmt *gorm.Statement, table string) (interface{}, interface{}) {
