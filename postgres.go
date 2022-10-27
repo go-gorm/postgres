@@ -27,6 +27,8 @@ type Config struct {
 	PreferSimpleProtocol bool
 	WithoutReturning     bool
 	Conn                 gorm.ConnPool
+
+	PgxConnectionConfig *pgx.ConnConfig
 }
 
 func Open(dsn string) gorm.Dialector {
@@ -55,6 +57,8 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 
 	if dialector.Conn != nil {
 		db.ConnPool = dialector.Conn
+	} else if dialector.PgxConnectionConfig != nil {
+		db.ConnPool = stdlib.OpenDB(*dialector.PgxConnectionConfig)
 	} else if dialector.DriverName != "" {
 		db.ConnPool, err = sql.Open(dialector.DriverName, dialector.Config.DSN)
 	} else {
