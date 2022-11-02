@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/migrator"
@@ -540,7 +540,7 @@ func (m Migrator) GetRows(currentSchema interface{}, table interface{}) (*sql.Ro
 		dialector, _ := m.Dialector.(Dialector)
 		// use simple protocol
 		if !m.DB.PrepareStmt && (dialector.Config != nil && (dialector.Config.DriverName == "" || dialector.Config.DriverName == "pgx")) {
-			d.Statement.Vars = append(d.Statement.Vars, pgx.QuerySimpleProtocol(true))
+			d.Statement.Vars = append([]interface{}{pgx.QueryExecModeSimpleProtocol}, d.Statement.Vars...)
 		}
 		return d
 	}).Rows()

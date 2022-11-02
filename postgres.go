@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/stdlib"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
 	"gorm.io/gorm/clause"
@@ -65,7 +65,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 			return
 		}
 		if dialector.Config.PreferSimpleProtocol {
-			config.PreferSimpleProtocol = true
+			config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 		}
 		result := timeZoneMatcher.FindStringSubmatch(dialector.Config.DSN)
 		if len(result) > 2 {
