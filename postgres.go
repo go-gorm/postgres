@@ -221,12 +221,12 @@ func (dialector Dialector) getSchemaCustomType(field *schema.Field) string {
 	return sqlType
 }
 
-func (dialectopr Dialector) SavePoint(tx *gorm.DB, name string) error {
+func (dialector Dialector) SavePoint(tx *gorm.DB, name string) error {
 	tx.Exec("SAVEPOINT " + name)
 	return nil
 }
 
-func (dialectopr Dialector) RollbackTo(tx *gorm.DB, name string) error {
+func (dialector Dialector) RollbackTo(tx *gorm.DB, name string) error {
 	tx.Exec("ROLLBACK TO SAVEPOINT " + name)
 	return nil
 }
