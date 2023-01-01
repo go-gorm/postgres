@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/migrator"
@@ -281,7 +280,22 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 			}
 
 			fileType := clause.Expr{SQL: m.DataTypeOf(field)}
+			// check for typeName and SQL name
+			isSameType := true
 			if fieldColumnType.DatabaseTypeName() != fileType.SQL {
+				isSameType = false
+				// if different, also check for aliases
+				aliases := m.GetTypeAliases(fieldColumnType.DatabaseTypeName())
+				for _, alias := range aliases {
+					if strings.HasPrefix(fileType.SQL, alias) {
+						isSameType = true
+						break
+					}
+				}
+			}
+
+			// not same, migrate
+			if !isSameType {
 				filedColumnAutoIncrement, _ := fieldColumnType.AutoIncrement()
 				if field.AutoIncrement && filedColumnAutoIncrement { // update
 					serialDatabaseType, _ := getSerialDatabaseType(fileType.SQL)
@@ -423,7 +437,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			}
 
 			if column.DefaultValueValue.Valid {
-				column.DefaultValueValue.String = regexp.MustCompile(`'(.*)'::[\w\s]+$`).ReplaceAllString(column.DefaultValueValue.String, "$1")
+				column.DefaultValueValue.String = regexp.MustCompile(`'?(.*)\b'?:+[\w\s]+$`).ReplaceAllString(column.DefaultValueValue.String, "$1")
 			}
 
 			if datetimePrecision.Valid {
