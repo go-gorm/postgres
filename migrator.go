@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/migrator"
@@ -340,7 +341,7 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 				}
 			}
 
-			if v, _ := fieldColumnType.DefaultValue(); v != field.DefaultValue {
+			if v, ok := fieldColumnType.DefaultValue(); (field.DefaultValueInterface == nil && ok) || v != field.DefaultValue {
 				if field.HasDefaultValue && (field.DefaultValueInterface != nil || field.DefaultValue != "") {
 					if field.DefaultValueInterface != nil {
 						defaultStmt := &gorm.Statement{Vars: []interface{}{field.DefaultValueInterface}}
