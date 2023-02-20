@@ -189,10 +189,17 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		}
 		return "text"
 	case schema.Time:
-		if field.Precision > 0 {
-			return fmt.Sprintf("timestamptz(%d)", field.Precision)
+		var timeType string
+		// Distinguish between schema.Time and tag time
+		if val, ok := field.TagSettings["TYPE"]; ok {
+			timeType = val
+		} else {
+			timeType = "timestamptz"
 		}
-		return "timestamptz"
+		if field.Precision > 0 {
+			return fmt.Sprintf("%s(%d)", timeType, field.Precision)
+		}
+		return timeType
 	case schema.Bytes:
 		return "bytea"
 	default:
