@@ -315,7 +315,12 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 						return err
 					}
 				} else {
-					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING ?::?",
+					sqlUsing := "USING ?::?"
+					if fileType.SQL == "boolean" {
+						sqlUsing = "USING ?::INT::?"
+
+					}
+					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?"+sqlUsing,
 						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, fileType).Error; err != nil {
 						return err
 					}
