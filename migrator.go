@@ -314,13 +314,14 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 					if err := m.DeleteSequence(m.DB, stmt, field, fileType); err != nil {
 						return err
 					}
-				} else {
-					sqlUsing := "USING ?::?"
-					if fileType.SQL == "boolean" {
-						sqlUsing = "USING ?::INT::?"
-
+				} else if fileType.SQL == "boolean" {
+					trueValues := []string{"1", "TRUE", "True", "true", "T", "t"}
+					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING CASE WHEN ?::VARCHAR(4) IN (?) THEN true ELSE false END",
+						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, trueValues).Error; err != nil {
+						return err
 					}
-					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? "+sqlUsing,
+				} else {
+					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING ?::?",
 						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, fileType).Error; err != nil {
 						return err
 					}
