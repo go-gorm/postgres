@@ -320,7 +320,7 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 						sqlUsing = "USING ?::INT::?"
 
 					}
-					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?"+sqlUsing,
+					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? "+sqlUsing,
 						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, fileType).Error; err != nil {
 						return err
 					}
