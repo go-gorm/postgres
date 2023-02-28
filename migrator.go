@@ -316,7 +316,7 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 					}
 				} else if fileType.SQL == "boolean" {
 					trueValues := []string{"1", "TRUE", "True", "true", "T", "t"}
-					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING CASE WHEN ?::VARCHAR(4) IN (?) THEN true ELSE false END",
+					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING CASE WHEN ?::VARCHAR(5) IN (?) THEN true ELSE false END",
 						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, trueValues).Error; err != nil {
 						return err
 					}
