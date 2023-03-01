@@ -314,14 +314,8 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 					if err := m.DeleteSequence(m.DB, stmt, field, fileType); err != nil {
 						return err
 					}
-				} else if fileType.SQL == "boolean" {
-					trueValues := []string{"1", "TRUE", "True", "true", "T", "t"}
-					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING CASE WHEN ?::VARCHAR(5) IN (?) THEN true ELSE false END",
-						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, trueValues).Error; err != nil {
-						return err
-					}
 				} else {
-					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING ?::?",
+					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ? USING "+m.genUsingExpression(fileType.SQL, fieldColumnType.DatabaseTypeName()),
 						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, fileType).Error; err != nil {
 						return err
 					}
@@ -379,6 +373,16 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 	}
 	m.resetPreparedStmts()
 	return nil
+}
+
+func (m Migrator) genUsingExpression(targetType, sourceType string) string {
+	if targetType == "boolean" {
+		switch sourceType {
+		case "int2", "int8", "numeric":
+			return "?::INT::?"
+		}
+	}
+	return "?::?"
 }
 
 func (m Migrator) HasConstraint(value interface{}, name string) bool {
