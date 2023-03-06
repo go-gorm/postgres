@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"encoding/json"
+	"gorm.io/gorm"
 )
 
 var errCodes = map[string]string{
@@ -27,8 +28,7 @@ func (dialector Dialector) Translate(err error) error {
 	}
 
 	if errMsg.Code == errCodes["uniqueConstraint"] {
-		// TODO: will add gorm.ErrDuplicatedKey here after this one merged https://github.com/go-gorm/gorm/pull/6004
-		return err
+		return gorm.ErrDuplicatedKey
 	}
 
 	return err
