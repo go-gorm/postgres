@@ -23,6 +23,7 @@ func (dialector Dialector) Translate(err error) error {
 		if pgErr.Code == errCodes["uniqueConstraint"] {
 			return gorm.ErrDuplicatedKey
 		}
+		return err
 	}
 
 	parsedErr, marshalErr := json.Marshal(err)
@@ -39,6 +40,5 @@ func (dialector Dialector) Translate(err error) error {
 	if errMsg.Code == errCodes["uniqueConstraint"] {
 		return gorm.ErrDuplicatedKey
 	}
-
 	return err
 }
