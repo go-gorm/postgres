@@ -315,7 +315,7 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 						return err
 					}
 				} else {
-					if dv, _ := fieldColumnType.DefaultValue(); dv != "" {
+					if dv, _ := fieldColumnType.DefaultValue(); dv != "" && m.isUncastableDefaultValue(fileType.SQL, fieldColumnType.DatabaseTypeName()) {
 						if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? DROP DEFAULT", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
 							return err
 						}
@@ -378,6 +378,13 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 	}
 	m.resetPreparedStmts()
 	return nil
+}
+
+func (m Migrator) isUncastableDefaultValue(targetType, sourceType string) bool {
+	if targetType == "boolean" {
+		return true
+	}
+	return false
 }
 
 func (m Migrator) genUsingExpression(targetType, sourceType string) string {
