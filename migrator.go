@@ -315,13 +315,7 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 						return err
 					}
 				} else {
-					if dv, _ := fieldColumnType.DefaultValue(); dv != "" && m.isUncastableDefaultValue(fileType.SQL, fieldColumnType.DatabaseTypeName()) {
-						if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? DROP DEFAULT", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error; err != nil {
-							return err
-						}
-					}
-					if err := m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? TYPE ?"+m.genUsingExpression(fileType.SQL, fieldColumnType.DatabaseTypeName()),
-						m.CurrentTable(stmt), clause.Column{Name: field.DBName}, fileType, clause.Column{Name: field.DBName}, fileType).Error; err != nil {
+					if err := m.ModifyColumn(value, field, fileType, fieldColumnType); err != nil {
 						return err
 					}
 				}
@@ -380,21 +374,35 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 	return nil
 }
 
-func (m Migrator) isUncastableDefaultValue(targetType, sourceType string) bool {
-	if targetType == "boolean" {
-		return true
+func (m Migrator) ModifyColumn(value interface{}, field *schema.Field, targetType clause.Expr, existingColumn *migrator.ColumnType) error {
+	alterSQL := "ALTER TABLE ? ALTER COLUMN ? TYPE ? USING ?::?"
+	isUncastableDefaultValue := false
+
+	if targetType.SQL == "boolean" {
+		switch existingColumn.DatabaseTypeName() {
+		case "int2", "int8", "numeric":
+			alterSQL = "ALTER TABLE ? ALTER COLUMN ? TYPE ? USING ?::int::?"
+		}
+		isUncastableDefaultValue = true
 	}
-	return false
+
+	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		if dv, _ := existingColumn.DefaultValue(); dv != "" && isUncastableDefaultValue {
+			if err := m.DropDefaultValue(value, field); err != nil {
+				return err
+			}
+		}
+		if err := m.DB.Exec(alterSQL, m.CurrentTable(stmt), clause.Column{Name: field.DBName}, targetType, clause.Column{Name: field.DBName}, targetType).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
-func (m Migrator) genUsingExpression(targetType, sourceType string) string {
-	if targetType == "boolean" {
-		switch sourceType {
-		case "int2", "int8", "numeric":
-			return " USING ?::INT::?"
-		}
-	}
-	return " USING ?::?"
+func (m Migrator) DropDefaultValue(value interface{}, field *schema.Field) error {
+	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
+		return m.DB.Exec("ALTER TABLE ? ALTER COLUMN ? DROP DEFAULT", m.CurrentTable(stmt), clause.Column{Name: field.DBName}).Error
+	})
 }
 
 func (m Migrator) HasConstraint(value interface{}, name string) bool {
