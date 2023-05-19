@@ -1,9 +1,10 @@
 name: tests
 
 on:
-  pull_request:
+  push:
     branches:
-      - 'master'
+      - '**'
+      - '*'
 
 permissions:
   contents: read
@@ -30,4 +31,4 @@ jobs:
       run: go build .
 
     - name: Run tests
-      run: go run test ./...
+      run: go test -race -count=1 -v ./...
