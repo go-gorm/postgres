@@ -41,7 +41,7 @@ func (dialector Dialector) Translate(err error) error {
 		return err
 	}
 
-	gormErr, ok := errDesToGormErrs[pgErr.Code]
+	gormErr, ok := errDesToGormErrs[errMsg.Code]
 		if ok {
 			return gormErr
 		}
