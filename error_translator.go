@@ -41,8 +41,9 @@ func (dialector Dialector) Translate(err error) error {
 		return err
 	}
 
-	if errMsg.Code == errCodes["uniqueConstraint"] {
-		return gorm.ErrDuplicatedKey
-	}
+	gormErr, ok := errDesToGormErrs[pgErr.Code]
+		if ok {
+			return gormErr
+		}
 	return err
 }
