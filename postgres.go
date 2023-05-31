@@ -3,10 +3,11 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/gorm"
@@ -246,4 +247,10 @@ func getSerialDatabaseType(s string) (dbType string, ok bool) {
 	default:
 		return "", false
 	}
+}
+
+func (dialector Dialector) Apply(config *gorm.Config) error {
+	// max identifier length for postgres is 63
+	config.NamingStrategy = &schema.NamingStrategy{IdentifierMaxLength: 63}
+	return nil
 }
