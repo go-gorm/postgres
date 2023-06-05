@@ -26,7 +26,7 @@ func TestDialector_Translate(t *testing.T) {
 			want: gorm.ErrDuplicatedKey,
 		},
 		{
-			name: "it should return ErrDuplicatedKey error if the status code is 23503",
+			name: "it should return ErrForeignKeyViolated error if the status code is 23503",
 			args: args{err: &pgconn.PgError{Code: "23503"}},
 			want: gorm.ErrForeignKeyViolated,
 		},
