@@ -3,12 +3,12 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"regexp"
 	"strconv"
 	"strings"
 
-	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/stdlib"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
 	"gorm.io/gorm/clause"
@@ -69,7 +69,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 			return
 		}
 		if dialector.Config.PreferSimpleProtocol {
-			config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+			config.PreferSimpleProtocol = true
 		}
 		result := timeZoneMatcher.FindStringSubmatch(dialector.Config.DSN)
 		if len(result) > 2 {
