@@ -1,16 +1,15 @@
-module gorm.io/driver/postgres
+module github.com/fw-ai/postgres
 
 go 1.18
 
 require (
+	github.com/jackc/pgconn v1.14.0
 	github.com/jackc/pgx/v4 v4.18.1
-	github.com/jackc/pgx/v5 v5.3.1
 	gorm.io/gorm v1.25.2-0.20230530020048-26663ab9bf55
 )
 
 require (
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.14.0 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.2 // indirect
