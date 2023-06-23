@@ -1,4 +1,4 @@
-module github.com/fw-ai/postgres
+module gorm.io/driver/postgres
 
 go 1.18
 
