@@ -2,9 +2,10 @@ package postgres
 
 import (
 	"errors"
-	"github.com/jackc/pgx/v5/pgconn"
-	"gorm.io/gorm"
 	"testing"
+
+	"github.com/jackc/pgconn"
+	"gorm.io/gorm"
 )
 
 func TestDialector_Translate(t *testing.T) {
