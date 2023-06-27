@@ -35,14 +35,16 @@ where
 `
 
 var typeAliasMap = map[string][]string{
-	"int2":     {"smallint"},
-	"int4":     {"integer"},
-	"int8":     {"bigint"},
-	"smallint": {"int2"},
-	"integer":  {"int4"},
-	"bigint":   {"int8"},
-	"decimal":  {"numeric"},
-	"numeric":  {"decimal"},
+	"int2":                     {"smallint"},
+	"int4":                     {"integer"},
+	"int8":                     {"bigint"},
+	"smallint":                 {"int2"},
+	"integer":                  {"int4"},
+	"bigint":                   {"int8"},
+	"decimal":                  {"numeric"},
+	"numeric":                  {"decimal"},
+	"timestamptz":              {"timestamp with time zone"},
+	"timestamp with time zone": {"timestamptz"},
 }
 
 type Migrator struct {
