@@ -477,7 +477,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			}
 
 			if column.DefaultValueValue.Valid {
-				column.DefaultValueValue.String = regexp.MustCompile(`'?(.*)\b?'?::[\w ]+$`).ReplaceAllString(column.DefaultValueValue.String, "$2")
+				column.DefaultValueValue.String = regexp.MustCompile(`'?(.*\b|)'?:+[\w\s]+$`).ReplaceAllString(column.DefaultValueValue.String, "$1")
 			}
 
 			if datetimePrecision.Valid {
