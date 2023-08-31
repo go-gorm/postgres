@@ -477,7 +477,7 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 			}
 
 			if column.DefaultValueValue.Valid {
-				column.DefaultValueValue.String = regexp.MustCompile(`'?(.*\b|)'?:+[\w\s]+$`).ReplaceAllString(column.DefaultValueValue.String, "$1")
+				column.DefaultValueValue.String = parseDefaultValueValue(column.DefaultValueValue.String)
 			}
 
 			if datetimePrecision.Valid {
@@ -782,4 +782,8 @@ func (m Migrator) RenameColumn(dst interface{}, oldName, field string) error {
 
 	m.resetPreparedStmts()
 	return nil
+}
+
+func parseDefaultValueValue(defaultValue string) string {
+	return regexp.MustCompile(`^(.*?)(?:::.*)?$`).ReplaceAllString(defaultValue, "$1")
 }
