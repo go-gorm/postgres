@@ -3,11 +3,11 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"regexp"
 	"strconv"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
@@ -46,7 +46,7 @@ var timeZoneMatcher = regexp.MustCompile("(time_zone|TimeZone)=(.*?)($|&| )")
 func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	callbackConfig := &callbacks.Config{
 		CreateClauses: []string{"INSERT", "VALUES", "ON CONFLICT"},
-		UpdateClauses: []string{"UPDATE", "SET", "WHERE"},
+		UpdateClauses: []string{"UPDATE", "SET", "FROM", "WHERE"},
 		DeleteClauses: []string{"DELETE", "FROM", "WHERE"},
 	}
 	// register callbacks
