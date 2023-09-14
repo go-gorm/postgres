@@ -15,9 +15,9 @@ var errCodes = map[string]error{
 }
 
 type ErrMessage struct {
-	Code     string `json:"Code"`
-	Severity string `json:"Severity"`
-	Message  string `json:"Message"`
+	Code     string
+	Severity string
+	Message  string
 }
 
 // Translate it will translate the error to native gorm errors.
