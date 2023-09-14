@@ -2,9 +2,10 @@ package postgres
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
-	"testing"
 )
 
 func TestDialector_Translate(t *testing.T) {
@@ -29,6 +30,11 @@ func TestDialector_Translate(t *testing.T) {
 			name: "it should return ErrForeignKeyViolated error if the status code is 23503",
 			args: args{err: &pgconn.PgError{Code: "23503"}},
 			want: gorm.ErrForeignKeyViolated,
+		},
+		{
+			name: "it should return gorm.ErrInvalidField error if the status code is 42703",
+			args: args{err: &pgconn.PgError{Code: "42703"}},
+			want: gorm.ErrInvalidField,
 		},
 	}
 	for _, tt := range tests {
