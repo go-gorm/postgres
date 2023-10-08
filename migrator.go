@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -163,13 +162,7 @@ func (m Migrator) CreateTable(values ...interface{}) (err error) {
 	for _, value := range m.ReorderModels(values, false) {
 		if err = m.RunWithValue(value, func(stmt *gorm.Statement) error {
 			if stmt.Schema != nil {
-				fields := make([]string, 0, len(stmt.Schema.FieldsByDBName))
-				for k := range stmt.Schema.FieldsByDBName {
-					fields = append(fields, k)
-				}
-				sort.Strings(fields)
-
-				for _, fieldName := range fields {
+				for _, fieldName := range stmt.Schema.DBNames {
 					field := stmt.Schema.FieldsByDBName[fieldName]
 					if field.Comment != "" {
 						if err := m.DB.Exec(
