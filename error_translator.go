@@ -11,12 +11,13 @@ import (
 var errCodes = map[string]error{
 	"23505": gorm.ErrDuplicatedKey,
 	"23503": gorm.ErrForeignKeyViolated,
+	"42703": gorm.ErrInvalidField,
 }
 
 type ErrMessage struct {
-	Code     string `json:"Code"`
-	Severity string `json:"Severity"`
-	Message  string `json:"Message"`
+	Code     string
+	Severity string
+	Message  string
 }
 
 // Translate it will translate the error to native gorm errors.
