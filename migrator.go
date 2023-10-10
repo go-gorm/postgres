@@ -162,7 +162,8 @@ func (m Migrator) CreateTable(values ...interface{}) (err error) {
 	for _, value := range m.ReorderModels(values, false) {
 		if err = m.RunWithValue(value, func(stmt *gorm.Statement) error {
 			if stmt.Schema != nil {
-				for _, field := range stmt.Schema.FieldsByDBName {
+				for _, fieldName := range stmt.Schema.DBNames {
+					field := stmt.Schema.FieldsByDBName[fieldName]
 					if field.Comment != "" {
 						if err := m.DB.Exec(
 							"COMMENT ON COLUMN ?.? IS ?",
