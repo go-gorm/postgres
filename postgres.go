@@ -24,6 +24,7 @@ type Dialector struct {
 type Config struct {
 	DriverName           string
 	DSN                  string
+	WithoutQuotingCheck  bool
 	PreferSimpleProtocol bool
 	WithoutReturning     bool
 	Conn                 gorm.ConnPool
@@ -98,6 +99,11 @@ func (dialector Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement,
 }
 
 func (dialector Dialector) QuoteTo(writer clause.Writer, str string) {
+	if dialector.WithoutQuotingCheck {
+		writer.WriteString(str)
+		return
+	}
+
 	var (
 		underQuoted, selfQuoted bool
 		continuousBacktick      int8
