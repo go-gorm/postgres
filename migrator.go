@@ -786,5 +786,6 @@ func (m Migrator) RenameColumn(dst interface{}, oldName, field string) error {
 }
 
 func parseDefaultValueValue(defaultValue string) string {
-	return regexp.MustCompile(`^(.*?)(?:::.*)?$`).ReplaceAllString(defaultValue, "$1")
+	value := regexp.MustCompile(`^(.*?)(?:::.*)?$`).ReplaceAllString(defaultValue, "$1")
+	return strings.Trim(value, "'")
 }
