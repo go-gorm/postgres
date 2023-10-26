@@ -29,32 +29,32 @@ func Test_parseDefaultValueValue(t *testing.T) {
 		{
 			name: "it should works with empty string without colons",
 			args: args{defaultValue: "''"},
-			want: "''",
+			want: "",
 		},
 		{
 			name: "it should works with empty string with two colons",
 			args: args{defaultValue: "''::character varying"},
-			want: "''",
+			want: "",
 		},
 		{
 			name: "it should works with empty string with three colons",
 			args: args{defaultValue: "'':::character varying"},
-			want: "''",
+			want: "",
 		},
 		{
 			name: "it should works with string without colons",
 			args: args{defaultValue: "'field'"},
-			want: "'field'",
+			want: "field",
 		},
 		{
 			name: "it should works with string with two colons",
 			args: args{defaultValue: "'field'::character varying"},
-			want: "'field'",
+			want: "field",
 		},
 		{
 			name: "it should works with string with three colons",
 			args: args{defaultValue: "'field':::character varying"},
-			want: "'field'",
+			want: "field",
 		},
 		{
 			name: "it should works with value with two colons",
