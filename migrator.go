@@ -3,6 +3,7 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"hash/fnv"
 	"regexp"
 	"strings"
 
@@ -783,6 +784,36 @@ func (m Migrator) RenameColumn(dst interface{}, oldName, field string) error {
 
 	m.resetPreparedStmts()
 	return nil
+}
+
+func hashString(s string) (int64, error) {
+	h := fnv.New64a()
+	_, err := h.Write([]byte(s))
+	return int64(h.Sum64()), err
+}
+
+func (m Migrator) lockID() (int64, error) {
+	return hashString("gorm:migrator")
+}
+
+func (m Migrator) ObtainLock() error {
+	// We don't yet have a table to operate on, so we use an advisory lock
+	// to prevent concurrent migrations from running.
+	lockID, err := m.lockID()
+	if err != nil {
+		return err
+	}
+
+	return m.DB.Exec("SELECT pg_advisory_lock(?)", lockID).Error
+}
+
+func (m Migrator) ReleaseLock() error {
+	lockID, err := m.lockID()
+	if err != nil {
+		return err
+	}
+
+	return m.DB.Exec("SELECT pg_advisory_unlock(?)", lockID).Error
 }
 
 func parseDefaultValueValue(defaultValue string) string {
