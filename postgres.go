@@ -57,7 +57,9 @@ func (dialector Dialector) Apply(config *gorm.Config) error {
 	case nil:
 		namingStartegy = &schema.NamingStrategy{}
 	}
-	namingStartegy.IdentifierMaxLength = defaultIdentifierLength
+	if namingStartegy.IdentifierMaxLength <= 0 {
+		namingStartegy.IdentifierMaxLength = defaultIdentifierLength
+	}
 	config.NamingStrategy = namingStartegy
 	return nil
 }
