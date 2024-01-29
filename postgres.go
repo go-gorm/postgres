@@ -30,6 +30,11 @@ type Config struct {
 	Conn                 gorm.ConnPool
 }
 
+var (
+	timeZoneMatcher         = regexp.MustCompile("(time_zone|TimeZone)=(.*?)($|&| )")
+	defaultIdentifierLength = 63 //maximum identifier length for postgres
+)
+
 func Open(dsn string) gorm.Dialector {
 	return &Dialector{&Config{DSN: dsn}}
 }
@@ -42,7 +47,22 @@ func (dialector Dialector) Name() string {
 	return "postgres"
 }
 
-var timeZoneMatcher = regexp.MustCompile("(time_zone|TimeZone)=(.*?)($|&| )")
+func (dialector Dialector) Apply(config *gorm.Config) error {
+	var namingStartegy *schema.NamingStrategy
+	switch v := config.NamingStrategy.(type) {
+	case *schema.NamingStrategy:
+		namingStartegy = v
+	case schema.NamingStrategy:
+		namingStartegy = &v
+	case nil:
+		namingStartegy = &schema.NamingStrategy{}
+	}
+	if namingStartegy.IdentifierMaxLength <= 0 {
+		namingStartegy.IdentifierMaxLength = defaultIdentifierLength
+	}
+	config.NamingStrategy = namingStartegy
+	return nil
+}
 
 func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 	callbackConfig := &callbacks.Config{
