@@ -120,13 +120,7 @@ func (dialector Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement,
 optionLoop:
 	for varLen > index {
 		switch stmt.Vars[index].(type) {
-		case pgx.QueryResultFormats:
-			index++
-		case pgx.QueryResultFormatsByOID:
-			index++
 		case pgx.QueryExecMode:
-			index++
-		case pgx.QueryRewriter:
 			index++
 		default:
 			break optionLoop
