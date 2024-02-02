@@ -117,13 +117,10 @@ func (dialector Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement,
 	writer.WriteByte('$')
 	index := 0
 	varLen := len(stmt.Vars)
-optionLoop:
-	for varLen > index {
+	if varLen > 0 {
 		switch stmt.Vars[index].(type) {
 		case pgx.QueryExecMode:
 			index++
-		default:
-			break optionLoop
 		}
 	}
 	writer.WriteString(strconv.Itoa(varLen - index))
