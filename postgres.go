@@ -118,7 +118,7 @@ func (dialector Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement,
 	index := 0
 	varLen := len(stmt.Vars)
 	if varLen > 0 {
-		switch stmt.Vars[index].(type) {
+		switch stmt.Vars[0].(type) {
 		case pgx.QueryExecMode:
 			index++
 		}
