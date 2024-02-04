@@ -115,7 +115,15 @@ func (dialector Dialector) DefaultValueOf(field *schema.Field) clause.Expression
 
 func (dialector Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement, v interface{}) {
 	writer.WriteByte('$')
-	writer.WriteString(strconv.Itoa(len(stmt.Vars)))
+	index := 0
+	varLen := len(stmt.Vars)
+	if varLen > 0 {
+		switch stmt.Vars[0].(type) {
+		case pgx.QueryExecMode:
+			index++
+		}
+	}
+	writer.WriteString(strconv.Itoa(varLen - index))
 }
 
 func (dialector Dialector) QuoteTo(writer clause.Writer, str string) {
