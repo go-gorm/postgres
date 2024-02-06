@@ -349,7 +349,27 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 						}
 					}
 				}
-
+				if unique, ok := fieldColumnType.Unique(); ok && unique != (field.Unique || field.UniqueIndex != "") {
+					uk := ""
+					if field.UniqueIndex == "" {
+						uk = "idx_" + stmt.Table + "_" + field.DBName
+					} else {
+						//if existes unique before,field.UniqueIndex must has value
+						uk = field.UniqueIndex
+					}
+					if field.Unique || field.UniqueIndex != "" {
+						hasIndex := m.HasIndex(value, field.UniqueIndex)
+						if !hasIndex {
+							if err := m.DB.Exec("ALTER TABLE ?  ADD CONSTRAINT ? UNIQUE (?)", m.CurrentTable(stmt), clause.Column{Name: uk}, clause.Column{Name: field.DBName}).Error; err != nil {
+								return err
+							}
+						}
+					} else {
+						if err := m.DB.Exec("ALTER TABLE ?  DROP CONSTRAINT ?", m.CurrentTable(stmt), clause.Column{Name: uk}).Error; err != nil {
+							return err
+						}
+					}
+				}
 				if v, ok := fieldColumnType.DefaultValue(); (field.DefaultValueInterface == nil && ok) || v != field.DefaultValue {
 					if field.HasDefaultValue && (field.DefaultValueInterface != nil || field.DefaultValue != "") {
 						if field.DefaultValueInterface != nil {
