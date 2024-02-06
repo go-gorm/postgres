@@ -15,3 +15,8 @@ require (
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 )
+
+retract (
+	v1.5.6 // Contains retractions only.
+	v1.5.5 // Published accidentally.
+)
