@@ -49,6 +49,7 @@ var typeAliasMap = map[string][]string{
 	"timestamptz":              {"timestamp with time zone"},
 	"timestamp with time zone": {"timestamptz"},
 	"bool":                     {"boolean"},
+	"boolean":                  {"bool"},
 }
 
 type Migrator struct {
