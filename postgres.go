@@ -48,19 +48,25 @@ func (dialector Dialector) Name() string {
 }
 
 func (dialector Dialector) Apply(config *gorm.Config) error {
-	var namingStartegy *schema.NamingStrategy
+	if config.NamingStrategy == nil {
+		config.NamingStrategy = schema.NamingStrategy{
+			IdentifierMaxLength: defaultIdentifierLength,
+		}
+		return nil
+	}
+
 	switch v := config.NamingStrategy.(type) {
 	case *schema.NamingStrategy:
-		namingStartegy = v
+		if v.IdentifierMaxLength <= 0 {
+			v.IdentifierMaxLength = defaultIdentifierLength
+		}
 	case schema.NamingStrategy:
-		namingStartegy = &v
-	case nil:
-		namingStartegy = &schema.NamingStrategy{}
+		if v.IdentifierMaxLength <= 0 {
+			v.IdentifierMaxLength = defaultIdentifierLength
+			config.NamingStrategy = v
+		}
 	}
-	if namingStartegy.IdentifierMaxLength <= 0 {
-		namingStartegy.IdentifierMaxLength = defaultIdentifierLength
-	}
-	config.NamingStrategy = namingStartegy
+
 	return nil
 }
 
