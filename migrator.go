@@ -312,7 +312,7 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 				fileType := clause.Expr{SQL: m.DataTypeOf(field)}
 				// check for typeName and SQL name
 				isSameType := true
-				if strings.ToUpper(fieldColumnType.DatabaseTypeName()) != fileType.SQL {
+				if strings.EqualFold(fieldColumnType.DatabaseTypeName(), fileType.SQL) {
 					isSameType = false
 					// if different, also check for aliases
 					aliases := m.GetTypeAliases(fieldColumnType.DatabaseTypeName())
