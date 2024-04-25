@@ -12,6 +12,7 @@ var errCodes = map[string]error{
 	"23505": gorm.ErrDuplicatedKey,
 	"23503": gorm.ErrForeignKeyViolated,
 	"42703": gorm.ErrInvalidField,
+	"23514": gorm.ErrCheckConstraintViolated,
 }
 
 type ErrMessage struct {
