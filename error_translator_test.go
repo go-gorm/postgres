@@ -36,6 +36,11 @@ func TestDialector_Translate(t *testing.T) {
 			args: args{err: &pgconn.PgError{Code: "42703"}},
 			want: gorm.ErrInvalidField,
 		},
+		{
+			name: "it should return gorm.ErrCheckConstraintViolated error if the status code is 23514",
+			args: args{err: &pgconn.PgError{Code: "23514"}},
+			want: gorm.ErrCheckConstraintViolated,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
