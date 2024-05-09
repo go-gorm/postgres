@@ -28,6 +28,7 @@ type Config struct {
 	PreferSimpleProtocol bool
 	WithoutReturning     bool
 	Conn                 gorm.ConnPool
+	OpenOptions          []stdlib.OptionOpenDB
 }
 
 var (
@@ -102,7 +103,7 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		if len(result) > 2 {
 			config.RuntimeParams["timezone"] = result[2]
 		}
-		db.ConnPool = stdlib.OpenDB(*config)
+		db.ConnPool = stdlib.OpenDB(*config, dialector.OpenOptions...)
 	}
 	return
 }
