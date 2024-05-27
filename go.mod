@@ -3,7 +3,7 @@ module gorm.io/driver/postgres
 go 1.18
 
 require (
-	github.com/jackc/pgx/v5 v5.5.5
+	github.com/jackc/pgx/v5 v5.6.0
 	gorm.io/gorm v1.25.10
 )
 
