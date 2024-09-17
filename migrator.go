@@ -154,6 +154,7 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 				if !m.HasIndex(value, name) {
 					return fmt.Errorf("failed to create index with name %v", name)
 				}
+				return nil
 			}
 		}
 
