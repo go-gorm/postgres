@@ -142,6 +142,10 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 					createIndexSQL += " ?"
 				}
 
+				if idx.Option != "" {
+					createIndexSQL += " " + idx.Option
+				}
+
 				if idx.Where != "" {
 					createIndexSQL += " WHERE " + idx.Where
 				}
