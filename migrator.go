@@ -3,10 +3,10 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"regexp"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/migrator"
@@ -142,7 +142,7 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 					createIndexSQL += " ?"
 				}
 
-				if idx.Option != "" {
+				if idx.Option != "" && strings.TrimSpace(strings.ToUpper(idx.Option)) != "CONCURRENTLY" {
 					createIndexSQL += " " + idx.Option
 				}
 
