@@ -212,7 +212,8 @@ func (dialector Dialector) Explain(sql string, vars ...interface{}) string {
 }
 
 func (dialector Dialector) DataTypeOf(field *schema.Field) string {
-	if field.DataType == schema.Array {
+	// Need to change to schema.Array once https://github.com/go-gorm/postgres/pull/296 is released
+	if field.DataType == "array" {
 		elemKind := field.TagSettings["ELEM_TYPE"]
 		switch elemKind {
 		case "string":
