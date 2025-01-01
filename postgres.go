@@ -27,6 +27,7 @@ type Config struct {
 	WithoutQuotingCheck  bool
 	PreferSimpleProtocol bool
 	WithoutReturning     bool
+	EnableArrayHandler   bool
 	Conn                 gorm.ConnPool
 }
 
@@ -104,6 +105,25 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		}
 		db.ConnPool = stdlib.OpenDB(*config)
 	}
+
+	if dialector.Config.EnableArrayHandler {
+		if err := db.Callback().Create().Before("gorm:create").Register("postgres:setup_array_handler", func(db *gorm.DB) {
+			if db.Statement.Schema != nil {
+				for _, field := range db.Statement.Schema.Fields {
+					if field.TagSettings["ARRAY_FIELD"] == "true" {
+						handler := &PostgresArrayHandler{}
+						err := handler.HandleArray(field)
+						if err != nil {
+							return
+						}
+					}
+				}
+			}
+		}); err != nil {
+			return err
+		}
+	}
+
 	return
 }
 
@@ -192,6 +212,27 @@ func (dialector Dialector) Explain(sql string, vars ...interface{}) string {
 }
 
 func (dialector Dialector) DataTypeOf(field *schema.Field) string {
+	if field.DataType == schema.Array {
+		elemKind := field.TagSettings["ELEM_TYPE"]
+		switch elemKind {
+		case "string":
+			field.Size = 0 // Let Postgres handle the size
+			return "text[]"
+		case "int", "int8", "int16", "int32", "int64":
+			return "integer[]"
+		case "uint", "uint16", "uint32", "uint64":
+			return "integer[]"
+		case "float32":
+			return "real[]"
+		case "float64":
+			return "double precision[]"
+		case "bool":
+			return "boolean[]"
+		default:
+			return "text[]"
+		}
+	}
+
 	switch field.DataType {
 	case schema.Bool:
 		return "boolean"
