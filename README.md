@@ -27,5 +27,34 @@ db, err := gorm.Open(postgres.New(postgres.Config{
 }), &gorm.Config{})
 ```
 
+## Example Usage
+
+```go
+import (
+	"fmt"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+)
+  
+type Postgress struct {
+	DB *gorm.DB
+}
+
+ func (store *Postgress) NewStore() error  {
+	dsn := "host=localhost user=gorm password=gorm dbname=gorm port=9920 sslmode=disable TimeZone=Asia/Shanghai"
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+
+	if err != nil {
+		fmt.Println("connection failed")
+		return err
+	}else{
+		fmt.Println("Database connected successfully")
+		store.DB = db
+	}
+  
+	return nil
+ }
+ ```
 
 Checkout [https://gorm.io](https://gorm.io) for details.
