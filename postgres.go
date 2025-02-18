@@ -228,7 +228,7 @@ func (dialector Dialector) DataTypeOf(field *schema.Field) string {
 		}
 		return "decimal"
 	case schema.String:
-		if field.Size > 0 {
+		if field.Size > 0 && field.Size <= 10485760 {
 			return fmt.Sprintf("varchar(%d)", field.Size)
 		}
 		return "text"
