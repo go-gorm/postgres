@@ -3,10 +3,10 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"regexp"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/migrator"
@@ -67,6 +67,11 @@ var typeAliasMap = map[string][]string{
 	"time without time zone":      {"time"},
 	"time with time zone":         {"timetz"},
 }
+
+var (
+	autoIncrementValuePattern = regexp.MustCompile(`^nextval\('"?[^']+seq"?'::regclass\)$`)
+	defaultValueValuePattern  = regexp.MustCompile(`^(.*?)(?:::.*)?$`)
+)
 
 type Migrator struct {
 	migrator.Migrator
@@ -501,7 +506,6 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 				column.LengthValue = typeLenValue
 			}
 
-			autoIncrementValuePattern := regexp.MustCompile(`^nextval\('"?[^']+seq"?'::regclass\)$`)
 			if autoIncrementValuePattern.MatchString(column.DefaultValueValue.String) || (identityIncrement.Valid && identityIncrement.String != "") {
 				column.AutoIncrementValue = sql.NullBool{Bool: true, Valid: true}
 				column.DefaultValueValue = sql.NullString{}
@@ -816,6 +820,6 @@ func (m Migrator) RenameColumn(dst interface{}, oldName, field string) error {
 }
 
 func parseDefaultValueValue(defaultValue string) string {
-	value := regexp.MustCompile(`^(.*?)(?:::.*)?$`).ReplaceAllString(defaultValue, "$1")
+	value := defaultValueValuePattern.ReplaceAllString(defaultValue, "$1")
 	return strings.Trim(value, "'")
 }
