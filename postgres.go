@@ -120,6 +120,17 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		}
 		db.ConnPool = stdlib.OpenDB(*config, options...)
 	}
+	if err != nil {
+		return
+	}
+
+	db.ClauseBuilders = make(map[string]clause.ClauseBuilder)
+
+	db.ClauseBuilders["WHERE"] = func(c clause.Clause, b clause.Builder) {
+		c.Expression = rewriteWhereClauses(c.Expression)
+		c.Build(b)
+	}
+
 	return
 }
 
