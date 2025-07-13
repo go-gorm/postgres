@@ -131,6 +131,22 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		c.Build(b)
 	}
 
+	if !dialector.Config.PreferSimpleProtocol {
+		// When inserting N rows with a bulk INSERT INTO, GORM produces a
+		// unique query string for every value of N. This means a prepared
+		// statement must be produced for every N, which overflows pgx's
+		// cache of prepared statements quickly.
+		//
+		// Just do not use prepared statements for bulk inserts.
+		db.ClauseBuilders["VALUES"] = func(c clause.Clause, b clause.Builder) {
+			values := c.Expression.(clause.Values)
+			if len(values.Values) > 1 {
+				b.AddVar(b, sql.NamedArg{Value: pgx.QueryExecModeDescribeExec})
+			}
+			c.Build(b)
+		}
+	}
+
 	return
 }
 
