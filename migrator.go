@@ -325,14 +325,18 @@ func (m Migrator) AlterColumn(value interface{}, field string) error {
 	err := m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		if stmt.Schema != nil {
 			if field := stmt.Schema.LookUpField(field); field != nil {
-				var (
-					columnTypes, _  = m.DB.Migrator().ColumnTypes(value)
-					fieldColumnType *migrator.ColumnType
-				)
+				columnTypes, err := m.DB.Migrator().ColumnTypes(value)
+				if err != nil {
+					return err
+				}
+				var fieldColumnType *migrator.ColumnType
 				for _, columnType := range columnTypes {
 					if columnType.Name() == field.DBName {
 						fieldColumnType, _ = columnType.(*migrator.ColumnType)
 					}
+				}
+				if fieldColumnType == nil {
+					return fmt.Errorf("failed to find column type for field %s", field.DBName)
 				}
 
 				fileType := clause.Expr{SQL: m.DataTypeOf(field)}
