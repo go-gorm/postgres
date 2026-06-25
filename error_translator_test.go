@@ -53,3 +53,59 @@ func TestDialector_Translate(t *testing.T) {
 		})
 	}
 }
+
+func TestDialector_Translate_PreservesOriginalError(t *testing.T) {
+	tests := []struct {
+		name        string
+		pgErr       *pgconn.PgError
+		wantGormErr error
+	}{
+		{
+			name: "it should preserve original pgError detail on ErrDuplicatedKey",
+			pgErr: &pgconn.PgError{
+				Code:           "23505",
+				Message:        "duplicate key value violates unique constraint",
+				Detail:         "Key (email)=(foo@bar.com) already exists.",
+				ConstraintName: "users_email_key",
+			},
+			wantGormErr: gorm.ErrDuplicatedKey,
+		},
+		{
+			name: "it should preserve original pgError detail on ErrForeignKeyViolated",
+			pgErr: &pgconn.PgError{
+				Code:           "23503",
+				Message:        "insert or update on table violates foreign key constraint",
+				Detail:         "Key (user_id)=(999) is not present in table \"users\".",
+				ConstraintName: "orders_user_id_fkey",
+			},
+			wantGormErr: gorm.ErrForeignKeyViolated,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dialector := Dialector{}
+			err := dialector.Translate(tt.pgErr)
+
+			// errors.Is() must still work after wrapping
+			if !errors.Is(err, tt.wantGormErr) {
+				t.Errorf("errors.Is() expected %v, got %v", tt.wantGormErr, err)
+			}
+
+			// errors.As() must be able to unwrap original pgErr
+			var pgErr *pgconn.PgError
+			if !errors.As(err, &pgErr) {
+				t.Errorf("errors.As() failed: original *pgconn.PgError is not accessible")
+				return
+			}
+
+			// original detail must be preserved
+			if pgErr.Detail != tt.pgErr.Detail {
+				t.Errorf("Detail expected %q, got %q", tt.pgErr.Detail, pgErr.Detail)
+			}
+			if pgErr.ConstraintName != tt.pgErr.ConstraintName {
+				t.Errorf("ConstraintName expected %q, got %q", tt.pgErr.ConstraintName, pgErr.ConstraintName)
+			}
+		})
+	}
+}
