@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -252,6 +255,51 @@ func TestListener_waitCanceled(t *testing.T) {
 	}
 }
 
+func TestListener_customNotificationHandler(t *testing.T) {
+	dsn := os.Getenv("POSTGRES_DSN")
+	if dsn == "" {
+		t.Skip("POSTGRES_DSN is not set, skipping integration test")
+	}
+
+	config, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		t.Fatalf("pgx.ParseConfig() error = %v", err)
+	}
+	handled := make(chan *pgconn.Notification, 1)
+	config.OnNotification = func(_ *pgconn.PgConn, notification *pgconn.Notification) {
+		handled <- notification
+	}
+
+	sqlDB := stdlib.OpenDB(*config)
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	db, err := gorm.Open(postgres.New(postgres.Config{Conn: sqlDB}), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("gorm.Open() error = %v", err)
+	}
+
+	ctx := context.Background()
+	listener := newTestListener(t, ctx, db)
+	if err := listener.Listen(ctx, "gorm_test_custom_handler"); err != nil {
+		t.Fatalf("Listen() error = %v", err)
+	}
+	notify(t, ctx, db, "gorm_test_custom_handler", "handled")
+
+	waitCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	if _, err := listener.WaitForNotification(waitCtx); !errors.Is(err, postgres.ErrNotificationHandlerConflict) {
+		t.Fatalf("WaitForNotification() error = %v, want ErrNotificationHandlerConflict", err)
+	}
+
+	select {
+	case notification := <-handled:
+		if notification.Channel != "gorm_test_custom_handler" || notification.Payload != "handled" {
+			t.Errorf("handled notification = %+v, want custom-handler notification", notification)
+		}
+	default:
+		t.Fatal("custom OnNotification handler was not called")
+	}
+}
+
 func TestListener_transactionCommitAndRollback(t *testing.T) {
 	db := integrationDB(t)
 	ctx := context.Background()
@@ -373,6 +421,12 @@ func TestListener_afterClose(t *testing.T) {
 	}
 	if err := listener.Unlisten(ctx, "gorm_test_closed"); !errors.Is(err, postgres.ErrListenerClosed) {
 		t.Errorf("Unlisten() after Close error = %v, want ErrListenerClosed", err)
+	}
+	if err := listener.Listen(ctx, ""); !errors.Is(err, postgres.ErrListenerClosed) {
+		t.Errorf("Listen(\"\") after Close error = %v, want ErrListenerClosed", err)
+	}
+	if err := listener.Unlisten(ctx, ""); !errors.Is(err, postgres.ErrListenerClosed) {
+		t.Errorf("Unlisten(\"\") after Close error = %v, want ErrListenerClosed", err)
 	}
 	if err := listener.UnlistenAll(ctx); !errors.Is(err, postgres.ErrListenerClosed) {
 		t.Errorf("UnlistenAll() after Close error = %v, want ErrListenerClosed", err)

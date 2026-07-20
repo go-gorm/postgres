@@ -23,6 +23,11 @@ var (
 	// ErrListenerClosed is returned by all Listener methods after Close has
 	// been called.
 	ErrListenerClosed = errors.New("postgres: listener is closed")
+
+	// ErrNotificationHandlerConflict is returned by WaitForNotification when
+	// the pgx connection has a custom OnNotification handler. Such a handler
+	// consumes notifications before pgx can return them to the Listener.
+	ErrNotificationHandlerConflict = errors.New("postgres: listener conflicts with configured pgx OnNotification handler")
 )
 
 // Notification is a PostgreSQL notification received by a Listener.
@@ -114,6 +119,9 @@ func NewListener(ctx context.Context, db *gorm.DB) (*Listener, error) {
 // Listen registers the Listener's session as a listener on channel, which is
 // quoted as a SQL identifier and therefore matched case-sensitively.
 func (l *Listener) Listen(ctx context.Context, channel string) error {
+	if l.closed.Load() {
+		return ErrListenerClosed
+	}
 	quoted, err := quoteChannel(channel)
 	if err != nil {
 		return err
@@ -124,6 +132,9 @@ func (l *Listener) Listen(ctx context.Context, channel string) error {
 // Unlisten removes the session's registration on channel. Unlistening a
 // channel that is not registered is not an error.
 func (l *Listener) Unlisten(ctx context.Context, channel string) error {
+	if l.closed.Load() {
+		return ErrListenerClosed
+	}
 	quoted, err := quoteChannel(channel)
 	if err != nil {
 		return err
@@ -144,13 +155,18 @@ func (l *Listener) UnlistenAll(ctx context.Context) error {
 // errors.Is(err, context.Canceled) or errors.Is(err, context.DeadlineExceeded)
 // and the Listener remains usable. Any other error usually means the
 // underlying connection is broken; the Listener should then be closed and, if
-// desired, replaced with a new one.
+// desired, replaced with a new one. If the pgx connection was configured with
+// a custom OnNotification handler, that handler consumes the notification and
+// WaitForNotification returns ErrNotificationHandlerConflict.
 func (l *Listener) WaitForNotification(ctx context.Context) (*Notification, error) {
 	var notification *Notification
 	err := l.raw(func(conn *pgx.Conn) error {
 		n, err := conn.WaitForNotification(ctx)
 		if err != nil {
 			return err
+		}
+		if n == nil {
+			return ErrNotificationHandlerConflict
 		}
 		notification = &Notification{PID: n.PID, Channel: n.Channel, Payload: n.Payload}
 		return nil
