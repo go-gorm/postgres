@@ -24,6 +24,7 @@ func Test_quoteChannel(t *testing.T) {
 		{name: "embedded double quote", channel: `we"ird`, want: `"we""ird"`},
 		{name: "asterisk is a plain identifier", channel: "*", want: `"*"`},
 		{name: "empty", channel: "", wantErr: true},
+		{name: "embedded NUL", channel: "my\x00channel", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

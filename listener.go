@@ -6,6 +6,7 @@ import (
 	"database/sql/driver"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/jackc/pgx/v5"
@@ -225,6 +226,9 @@ func (l *Listener) exec(ctx context.Context, sql string) error {
 func quoteChannel(channel string) (string, error) {
 	if channel == "" {
 		return "", errors.New("postgres: notification channel name must not be empty")
+	}
+	if strings.ContainsRune(channel, '\x00') {
+		return "", errors.New("postgres: notification channel name must not contain NUL")
 	}
 	return pgx.Identifier{channel}.Sanitize(), nil
 }
