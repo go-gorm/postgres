@@ -11,7 +11,7 @@ jobs:
   run-tests:
     strategy:
       matrix:
-        go: ['1.23.0']
+        go: ['stable']
         platform: [ubuntu-latest]
     runs-on: ubuntu-latest
 
