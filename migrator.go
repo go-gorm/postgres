@@ -173,6 +173,12 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 func (m Migrator) RenameIndex(value interface{}, oldName, newName string) error {
 	return m.RunWithValue(value, func(stmt *gorm.Statement) error {
 		currentSchema, _ := m.CurrentSchema(stmt, stmt.Table)
+		if currentSchema == "" {
+			return m.DB.Exec(
+				"ALTER INDEX ? RENAME TO ?",
+				clause.Column{Name: oldName}, clause.Column{Name: newName},
+			).Error
+		}
 		return m.DB.Exec(
 			"ALTER INDEX ?.? RENAME TO ?",
 			clause.Column{Name: currentSchema.(string)}, clause.Column{Name: oldName}, clause.Column{Name: newName},
@@ -189,6 +195,9 @@ func (m Migrator) DropIndex(value interface{}, name string) error {
 		}
 
 		currentSchema, _ := m.CurrentSchema(stmt, stmt.Table)
+		if currentSchema == "" {
+			return m.DB.Exec("DROP INDEX ?", clause.Column{Name: name}).Error
+		}
 		return m.DB.Exec("DROP INDEX ?.?", clause.Column{Name: currentSchema.(string)}, clause.Column{Name: name}).Error
 	})
 }
@@ -650,9 +659,12 @@ func (m Migrator) CurrentSchema(stmt *gorm.Statement, table string) (interface{}
 		}
 	}
 
-	var name string
+	var name *string
 	m.queryRaw("SELECT current_schema()").Scan(&name)
-	return name, table
+	if name == nil {
+		return "", table
+	}
+	return *name, table
 }
 
 func (m Migrator) CreateSequence(tx *gorm.DB, stmt *gorm.Statement, field *schema.Field,
