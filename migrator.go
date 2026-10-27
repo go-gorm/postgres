@@ -162,7 +162,33 @@ func (m Migrator) CreateIndex(value interface{}, name string) error {
 					createIndexSQL += " WHERE " + idx.Where
 				}
 
-				return m.DB.Exec(createIndexSQL, values...).Error
+				if err := m.DB.Exec(createIndexSQL, values...).Error; err != nil {
+					return err
+				}
+				if m.DB.DryRun {
+					return nil
+				}
+
+				// IF NOT EXISTS can also skip an index when another relation owns
+				// its name. Resolve the target table in its actual schema and only
+				// report a collision when the catalog positively identifies one.
+				tableName := m.DB.ToSQL(func(tx *gorm.DB) *gorm.DB {
+					return tx.Raw("?", m.CurrentTable(stmt))
+				})
+				var conflicts int64
+				if err := m.DB.Raw(`SELECT pg_catalog.count(*)
+					FROM pg_catalog.pg_class AS target
+					JOIN pg_catalog.pg_class AS conflict
+					  ON conflict.relnamespace = target.relnamespace AND conflict.relname = CAST(? AS pg_catalog.name)
+					LEFT JOIN pg_catalog.pg_index AS idx ON idx.indexrelid = conflict.oid
+					WHERE target.oid = pg_catalog.to_regclass(?)
+					  AND (idx.indrelid IS NULL OR idx.indrelid <> target.oid)`, idx.Name, tableName).Scan(&conflicts).Error; err != nil {
+					return err
+				}
+				if conflicts > 0 {
+					return fmt.Errorf("cannot create index %q on %s: another relation in the schema already uses that name", idx.Name, tableName)
+				}
+				return nil
 			}
 		}
 
