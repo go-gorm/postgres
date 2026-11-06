@@ -35,7 +35,6 @@ type Config struct {
 }
 
 var (
-	timeZoneMatcher         = regexp.MustCompile("(time_zone|TimeZone|timezone)=(.*?)($|&| )")
 	defaultIdentifierLength = 63 //maximum identifier length for postgres
 )
 
@@ -102,11 +101,21 @@ func (dialector Dialector) Initialize(db *gorm.DB) (err error) {
 		if dialector.Config.PreferSimpleProtocol {
 			config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 		}
-		result := timeZoneMatcher.FindStringSubmatch(dialector.Config.DSN)
-		if len(result) > 2 {
-			config.RuntimeParams["timezone"] = result[2]
+
+		var tz string
+		for key, val := range config.RuntimeParams {
+			lowerKey := strings.ToLower(key)
+			if lowerKey == "timezone" || lowerKey == "time_zone" {
+				tz = val
+				break
+			}
+		}
+
+		if tz != "" {
+			config.RuntimeParams["timezone"] = tz
+
 			dialector.OptionOpenDB = append(dialector.OptionOpenDB, stdlib.OptionAfterConnect(func(ctx context.Context, conn *pgx.Conn) error {
-				loc, tzErr := time.LoadLocation(result[2])
+				loc, tzErr := time.LoadLocation(tz)
 				if tzErr != nil {
 					return tzErr
 				}
