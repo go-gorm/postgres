@@ -566,36 +566,28 @@ func (m Migrator) ColumnTypes(value interface{}) (columnTypes []gorm.ColumnType,
 		}
 
 		// check primary, unique field
+		// Read pg_constraint directly: information_schema.constraint_column_usage
+		// scans all of pg_constraint once per column, so it gets slow on large
+		// catalogs. pg_has_role keeps the visibility rules of that view.
 		{
-			columnTypeRows, err := m.queryRaw("SELECT constraint_name FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = ? AND c.table_schema = ? AND c.table_name = ? AND constraint_type = ?", currentDatabase, currentSchema, table, "UNIQUE").Rows()
-			if err != nil {
-				return err
-			}
-			uniqueContraints := map[string]int{}
-			for columnTypeRows.Next() {
-				var constraintName string
-				columnTypeRows.Scan(&constraintName)
-				uniqueContraints[constraintName]++
-			}
-			columnTypeRows.Close()
-
-			columnTypeRows, err = m.queryRaw("SELECT c.column_name, constraint_name, constraint_type FROM information_schema.table_constraints tc JOIN information_schema.constraint_column_usage AS ccu USING (constraint_schema, constraint_catalog, table_name, constraint_name) JOIN information_schema.columns AS c ON c.table_schema = tc.constraint_schema AND tc.table_name = c.table_name AND ccu.column_name = c.column_name WHERE constraint_type IN ('PRIMARY KEY', 'UNIQUE') AND c.table_catalog = ? AND c.table_schema = ? AND c.table_name = ?", currentDatabase, currentSchema, table).Rows()
+			columnTypeRows, err := m.queryRaw("SELECT a.attname, con.contype = 'p', array_length(con.conkey, 1) FROM pg_catalog.pg_constraint con JOIN pg_catalog.pg_class c ON c.oid = con.conrelid JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace JOIN pg_catalog.pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = ANY (con.conkey) WHERE con.contype IN ('p', 'u') AND c.relkind IN ('r', 'p') AND NOT a.attisdropped AND pg_has_role(c.relowner, 'USAGE') AND n.nspname = ? AND c.relname = ?", currentSchema, table).Rows()
 			if err != nil {
 				return err
 			}
 			for columnTypeRows.Next() {
-				var name, constraintName, columnType string
-				columnTypeRows.Scan(&name, &constraintName, &columnType)
+				var (
+					name        string
+					primaryKey  bool
+					columnCount int
+				)
+				columnTypeRows.Scan(&name, &primaryKey, &columnCount)
 				for _, c := range columnTypes {
 					mc := c.(*migrator.ColumnType)
 					if mc.NameValue.String == name {
-						switch columnType {
-						case "PRIMARY KEY":
+						if primaryKey {
 							mc.PrimaryKeyValue = sql.NullBool{Bool: true, Valid: true}
-						case "UNIQUE":
-							if uniqueContraints[constraintName] == 1 {
-								mc.UniqueValue = sql.NullBool{Bool: true, Valid: true}
-							}
+						} else if columnCount == 1 {
+							mc.UniqueValue = sql.NullBool{Bool: true, Valid: true}
 						}
 						break
 					}
